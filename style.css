@@ -1,0 +1,932 @@
+:root {
+  --player-bg:   #101010;
+  --cassette-bg: #1d1812;
+  --btn-bg:      #242424;
+  --text:        #e8e8e8;
+  --accent:      #f3a024;
+  --accent-dark: #d48a18;
+  --muted:       #585858;
+  --border:      #282828;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display',
+               'Segoe UI', system-ui, sans-serif;
+  background: radial-gradient(ellipse at 50% 10%, #f7b23a 0%, #bf6010 100%);
+  color: var(--text);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  padding: 24px;
+}
+
+/* ── Player shell ──────────────────────────────────────── */
+.player-container {
+  width: 480px;
+  background: var(--player-bg);
+  border-radius: 24px;
+  padding: 26px 24px 24px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.8),
+    0 36px 90px rgba(0, 0, 0, 0.85),
+    0 12px 30px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  position: relative;
+  z-index: 1;
+}
+
+/* ── Cassette body ─────────────────────────────────────── */
+.cassette {
+  width: 100%;
+  border: 1px solid #0c0c0c;
+  border-radius: 14px;
+  margin-bottom: 20px;
+  overflow: hidden;
+  position: relative;
+
+  /* Warm dark-brown plastic + corner screw holes + surface sheen */
+  background-color: #1d1812;
+  background-image:
+    radial-gradient(circle at 18px 18px,
+      #070707 3.5px, #2d2822 3.5px, #2d2822 5.5px, transparent 5.5px),
+    radial-gradient(circle at calc(100% - 18px) 18px,
+      #070707 3.5px, #2d2822 3.5px, #2d2822 5.5px, transparent 5.5px),
+    radial-gradient(circle at 18px calc(100% - 18px),
+      #070707 3.5px, #2d2822 3.5px, #2d2822 5.5px, transparent 5.5px),
+    radial-gradient(circle at calc(100% - 18px) calc(100% - 18px),
+      #070707 3.5px, #2d2822 3.5px, #2d2822 5.5px, transparent 5.5px),
+    linear-gradient(175deg, #272118 0%, #1d1812 45%, #141008 100%);
+  background-repeat: no-repeat;
+
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.65),
+    inset 1px 0 0 rgba(255, 255, 255, 0.025),
+    inset -1px 0 0 rgba(255, 255, 255, 0.025),
+    0 8px 28px rgba(0, 0, 0, 0.55);
+}
+
+/* Three-column row: left well | label | right well */
+.cassette-body {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 18px 12px;
+}
+
+/* ── Reel well — dark circular opening in the cassette shell ── */
+.reel-well {
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  background: radial-gradient(circle at center, #040404 0%, #0b0b0b 55%, #141414 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow:
+    inset 0 6px 18px rgba(0, 0, 0, 0.97),
+    inset 0 0 0 1px rgba(0, 0, 0, 0.9),
+    0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+/* ── Centre label / sticker ────────────────────────────── */
+.cassette-label {
+  flex: 1;
+  margin: 0 12px;
+  height: 100px;
+  position: relative;
+  border: 1px solid #2e2922;
+  border-radius: 7px;
+  overflow: hidden;
+  background: #1a1510;
+}
+
+/* Cassette sticker — cream/ivory like a real tape label */
+.sticker {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 8px 10px;
+  background: linear-gradient(160deg, #f2ede4 0%, #e8e0d2 100%);
+}
+
+.sticker-brand {
+  font-size: 0.52em;
+  font-weight: 800;
+  color: var(--accent-dark);
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+}
+
+.sticker-reels {
+  font-size: 1.0em;
+  color: #c0b8a8;
+  letter-spacing: 10px;
+}
+
+.track-title {
+  font-size: 0.60em;
+  color: #6a5a48;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+  text-align: center;
+}
+
+/* Album art fills the label */
+.album-art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: none;
+}
+
+/* Track title bar overlaid on album art */
+.art-title {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 4px 8px;
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  font-size: 0.58em;
+  font-weight: 600;
+  color: #fff;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center;
+  display: none;
+}
+
+/* ── Reels ─────────────────────────────────────────────── */
+.reel {
+  position: relative;
+  width: 98px;
+  height: 98px;
+  flex-shrink: 0;
+  border: 2px solid rgba(255, 255, 255, 0.04);
+  border-radius: 50%;
+  /* 5-spoke design: 10 × 36° alternating dark gap / warm spoke */
+  background: repeating-conic-gradient(
+    from 18deg,
+    #0d0d0d  0deg 20deg,
+    #262018  20deg 36deg
+  );
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform-origin: center center;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.75);
+}
+
+/* Tape coil — border-width driven by JS (22 → 2 px on left, 2 → 22 px on right) */
+.reel-tape {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 22px solid #6b4e2e;
+  transition: border-width 0.4s ease;
+  pointer-events: none;
+}
+
+/* Hub — metallic radial gradient with specular highlight */
+.hub {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 36% 28%,
+    #d0d0d0 0%,
+    #909090 25%,
+    #505050 60%,
+    #282828 100%
+  );
+  border: 1.5px solid #1a1a1a;
+  position: relative;
+  z-index: 1;
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.70),
+    inset 0 1px 0 rgba(255, 255, 255, 0.28);
+}
+
+.hub::after {
+  content: '';
+  position: absolute;
+  width: 11px;
+  height: 11px;
+  background: #0e0e0e;
+  border-radius: 50%;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.9);
+}
+
+/* Spin animations: left CCW (paying out), right CW (taking up) */
+@keyframes spin-cw {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+@keyframes spin-ccw {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(-360deg); }
+}
+.reel-left.spin  { animation: spin-ccw 2s linear infinite; }
+.reel-right.spin { animation: spin-cw  2s linear infinite; }
+
+/* ── Tape path (cassette window) ───────────────────────── */
+.tape-path {
+  height: 28px;
+  margin: 0 16px 18px;
+  background: #060606;
+  border: 1.5px solid #1c1c1c;
+  border-top-color: #111;
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+  box-shadow:
+    inset 0 2px 10px rgba(0, 0, 0, 0.95),
+    0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+/* Guide pegs — small metallic cylinders on each side of the tape window */
+.tape-path::before,
+.tape-path::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 9px;
+  height: 20px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #222 0%, #3c3c3c 45%, #242424 100%);
+  border: 1px solid #111;
+  z-index: 2;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+}
+.tape-path::before { left: 7px; }
+.tape-path::after  { right: 7px; }
+
+.tape-strand {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  left: 18px;   /* runs between the guide pegs */
+  right: 18px;
+  height: 12px;
+  background: repeating-linear-gradient(
+    90deg,
+    #5c4228 0px,  #5c4228 10px,
+    #4a3318 10px, #4a3318 12px
+  );
+  background-size: 12px 100%;
+}
+
+.tape-strand.rolling {
+  animation: tape-roll 0.22s linear infinite;
+}
+
+@keyframes tape-roll {
+  from { background-position-x: 0; }
+  to   { background-position-x: 12px; }
+}
+
+/* ── Now Playing ───────────────────────────────────────── */
+.now-playing {
+  text-align: center;
+  padding: 4px 4px 14px;
+}
+
+.track-name {
+  font-size: 1.0em;
+  font-weight: 600;
+  color: #f0f0f0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: 0.1px;
+}
+
+.track-meta {
+  font-size: 0.78em;
+  color: var(--muted);
+  margin-top: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Seek bar ──────────────────────────────────────────── */
+.seek-container {
+  margin-bottom: 18px;
+}
+
+.seek-bar {
+  width: 100%;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 5px;
+  border-radius: 3px;
+  background: #1e1e1e;
+  outline: none;
+  cursor: pointer;
+  display: block;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.7);
+}
+
+.seek-bar:disabled {
+  opacity: 0.22;
+  cursor: default;
+}
+
+.seek-bar::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 38% 32%,
+    #ffd070 0%,
+    var(--accent) 55%,
+    var(--accent-dark) 100%
+  );
+  cursor: pointer;
+  box-shadow:
+    0 2px 8px rgba(243, 160, 36, 0.55),
+    0 1px 2px rgba(0, 0, 0, 0.4);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.seek-bar:hover:not(:disabled)::-webkit-slider-thumb {
+  transform: scale(1.2);
+  box-shadow:
+    0 3px 14px rgba(243, 160, 36, 0.70),
+    0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+.seek-bar::-moz-range-thumb {
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+  border: none;
+}
+
+.time-display {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.70em;
+  color: var(--muted);
+  margin-top: 6px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.3px;
+}
+
+/* ── Controls ──────────────────────────────────────────── */
+.control-panel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.file-input { display: none; }
+
+.ctrl-btn {
+  background: linear-gradient(180deg, #2c2c2c 0%, #1e1e1e 100%);
+  color: var(--text);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom-color: rgba(0, 0, 0, 0.5);
+  padding: 10px 15px;
+  border-radius: 10px;
+  font-size: 0.95em;
+  cursor: pointer;
+  transition: background 0.12s, transform 0.1s, box-shadow 0.1s;
+  line-height: 1;
+  box-shadow:
+    0 2px 5px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.07);
+}
+
+.ctrl-btn:hover:not(:disabled) {
+  background: linear-gradient(180deg, #383838 0%, #2a2a2a 100%);
+  box-shadow:
+    0 3px 7px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.09);
+}
+
+.ctrl-btn:active:not(:disabled) {
+  transform: scale(0.92) translateY(1px);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  background: linear-gradient(180deg, #1e1e1e 0%, #282828 100%);
+}
+
+.ctrl-btn:disabled {
+  opacity: 0.25;
+  cursor: default;
+}
+
+/* Circular play / pause button */
+.play-btn {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 40% 34%,
+    #ffc848 0%,
+    var(--accent) 48%,
+    var(--accent-dark) 100%
+  );
+  color: #111;
+  font-size: 1.1em;
+  font-weight: 700;
+  padding: 0;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow:
+    0 5px 22px rgba(243, 160, 36, 0.58),
+    0 2px 6px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.38);
+  transition: transform 0.12s, box-shadow 0.14s;
+  cursor: pointer;
+}
+
+.play-btn:hover:not(:disabled) {
+  transform: translateY(-2px) scale(1.05);
+  box-shadow:
+    0 8px 30px rgba(243, 160, 36, 0.72),
+    0 3px 8px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.38);
+}
+
+.play-btn:active:not(:disabled) {
+  transform: scale(0.93) translateY(1px);
+  box-shadow:
+    0 2px 10px rgba(243, 160, 36, 0.38),
+    inset 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+
+/* ── Audio info strip ──────────────────────────────────── */
+.info {
+  display: flex;
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 10px;
+  padding: 12px 6px;
+  margin-bottom: 14px;
+}
+
+.info-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.info-item + .info-item {
+  border-left: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.info-label {
+  font-size: 0.60em;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+.info-value {
+  font-size: 0.86em;
+  font-weight: 600;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Playlist ──────────────────────────────────────────── */
+.playlist-section {
+  background: rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 10px;
+  overflow: hidden;
+  max-height: 176px;
+  display: flex;
+  flex-direction: column;
+}
+
+.playlist-header {
+  padding: 8px 14px;
+  font-size: 0.66em;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: var(--muted);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  flex-shrink: 0;
+}
+
+.playlist {
+  list-style: none;
+  overflow-y: auto;
+  flex: 1;
+}
+
+/* Thin custom scrollbar */
+.playlist::-webkit-scrollbar        { width: 3px; }
+.playlist::-webkit-scrollbar-track  { background: transparent; }
+.playlist::-webkit-scrollbar-thumb  { background: #333; border-radius: 2px; }
+
+.playlist li {
+  padding: 8px 14px;
+  font-size: 0.80em;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.025);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #666;
+  transition: background 0.12s, color 0.12s;
+}
+
+.playlist li:hover {
+  background: rgba(255, 255, 255, 0.04);
+  color: #aaa;
+}
+
+.playlist li.active {
+  color: var(--accent);
+  background: rgba(243, 160, 36, 0.07);
+  border-left: 3px solid var(--accent);
+  padding-left: 11px;
+  font-weight: 600;
+}
+
+/* ── Ambient audio-reactive background ────────────────── */
+.ambient-bg {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.orb {
+  position: absolute;
+  border-radius: 50%;
+  opacity: 0;
+  will-change: transform, opacity;
+  transform-origin: center center;
+}
+
+/* Bass — warm orange/red, top-left */
+.orb-1 {
+  width: 700px;
+  height: 700px;
+  background: radial-gradient(circle, rgba(255, 70, 10, 0.9) 0%, transparent 65%);
+  filter: blur(110px);
+  top: -300px;
+  left: -280px;
+}
+
+/* Treble — indigo/violet, bottom-right */
+.orb-2 {
+  width: 650px;
+  height: 650px;
+  background: radial-gradient(circle, rgba(110, 30, 255, 0.85) 0%, transparent 65%);
+  filter: blur(110px);
+  bottom: -280px;
+  right: -260px;
+}
+
+/* Mids — teal/emerald, bottom-centre */
+.orb-3 {
+  width: 580px;
+  height: 580px;
+  background: radial-gradient(circle, rgba(0, 220, 150, 0.75) 0%, transparent 65%);
+  filter: blur(110px);
+  bottom: -240px;
+  left: calc(50% - 290px);
+}
+
+/* ── Marquee for long track names ──────────────────────── */
+.track-name {
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(
+    to right, transparent 0%, black 6%, black 94%, transparent 100%
+  );
+  mask-image: linear-gradient(
+    to right, transparent 0%, black 6%, black 94%, transparent 100%
+  );
+}
+
+.marquee-inner {
+  display: inline-block;
+  white-space: nowrap;
+  animation: marquee-scroll 12s linear infinite;
+}
+
+@keyframes marquee-scroll {
+  0%,  8%  { transform: translateX(0); }
+  92%, 100% { transform: translateX(-50%); }
+}
+
+/* ── Theme toggle button ───────────────────────────────── */
+.theme-toggle {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--btn-bg);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  color: var(--text);
+  font-size: 1em;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.14s, transform 0.12s;
+  z-index: 10;
+}
+
+.theme-toggle:hover {
+  background: #3a3a3a;
+  transform: scale(1.1) rotate(15deg);
+}
+
+/* ── YouTube input section ─────────────────────────────── */
+.yt-section {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.yt-badge {
+  flex-shrink: 0;
+  background: #e00;
+  color: #fff;
+  font-size: 0.60em;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  padding: 3px 7px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  user-select: none;
+  pointer-events: none;
+}
+
+.yt-url-input {
+  flex: 1;
+  min-width: 0;
+  background: var(--btn-bg);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 9px;
+  color: var(--text);
+  font-size: 0.78em;
+  padding: 9px 12px;
+  outline: none;
+  transition: border-color 0.14s, box-shadow 0.14s;
+  font-family: inherit;
+}
+
+.yt-url-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(243, 160, 36, 0.14);
+}
+
+.yt-url-input::placeholder {
+  color: var(--muted);
+}
+
+.yt-load-btn {
+  flex-shrink: 0;
+  background: #e00;
+  color: #fff;
+  border: none;
+  border-radius: 9px;
+  font-size: 0.82em;
+  font-weight: 700;
+  padding: 9px 16px;
+  cursor: pointer;
+  transition: background 0.14s, transform 0.1s;
+  letter-spacing: 0.3px;
+  font-family: inherit;
+}
+
+.yt-load-btn:hover  { background: #c00; }
+.yt-load-btn:active { transform: scale(0.93); }
+
+/* Hidden YouTube IFrame container */
+#ytPlayerEl {
+  position: fixed;
+  top: -9999px;
+  left: -9999px;
+  width: 200px;
+  height: 200px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ── Light theme ───────────────────────────────────────── */
+body.light {
+  --player-bg:   #f4f1ec;
+  --cassette-bg: #dedad4;
+  --btn-bg:      #e6e2dc;
+  --text:        #1a1a1a;
+  --accent:      #d4850e;
+  --accent-dark: #b87010;
+  --muted:       #8a8680;
+  --border:      #cac6c0;
+
+  background: radial-gradient(ellipse at 50% 10%, #fde68a 0%, #f59e20 100%);
+}
+
+body.light .player-container {
+  box-shadow:
+    0 24px 60px rgba(0, 0, 0, 0.22),
+    0 4px 14px  rgba(0, 0, 0, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.85);
+  border-color: rgba(0, 0, 0, 0.07);
+}
+
+body.light .theme-toggle {
+  border-color: rgba(0, 0, 0, 0.10);
+}
+
+body.light .theme-toggle:hover {
+  background: #d8d4ce;
+}
+
+/* Cassette shell — warm beige plastic */
+body.light .cassette {
+  background-color: #dedad4;
+  background-image:
+    radial-gradient(circle at 18px 18px,
+      #b0aca6 3.5px, #c8c4be 3.5px, #c8c4be 5.5px, transparent 5.5px),
+    radial-gradient(circle at calc(100% - 18px) 18px,
+      #b0aca6 3.5px, #c8c4be 3.5px, #c8c4be 5.5px, transparent 5.5px),
+    radial-gradient(circle at 18px calc(100% - 18px),
+      #b0aca6 3.5px, #c8c4be 3.5px, #c8c4be 5.5px, transparent 5.5px),
+    radial-gradient(circle at calc(100% - 18px) calc(100% - 18px),
+      #b0aca6 3.5px, #c8c4be 3.5px, #c8c4be 5.5px, transparent 5.5px),
+    linear-gradient(175deg, #e4e0da 0%, #d8d4ce 45%, #ccc8c2 100%);
+  border-color: #b8b4b0;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.10),
+    0 6px 18px rgba(0, 0, 0, 0.15);
+}
+
+body.light .reel-well {
+  background: radial-gradient(circle at center, #888480 0%, #9e9a96 55%, #b0aca8 100%);
+  box-shadow:
+    inset 0 4px 12px rgba(0, 0, 0, 0.35),
+    inset 0 0 0 1px rgba(0, 0, 0, 0.15),
+    0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+body.light .reel {
+  background: repeating-conic-gradient(
+    from 18deg,
+    #b8b4ae 0deg 20deg,
+    #d0ccc6 20deg 36deg
+  );
+  border-color: rgba(0, 0, 0, 0.10);
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+body.light .hub {
+  background: radial-gradient(
+    circle at 36% 28%,
+    #e0dcd8 0%, #b0aca8 30%, #888480 65%, #6a6662 100%
+  );
+  border-color: #aaa;
+}
+
+body.light .hub::after {
+  background: #f0ece8;
+}
+
+body.light .cassette-label {
+  background: #d0ccc6;
+  border-color: #bbbbb5;
+}
+
+body.light .sticker {
+  background: linear-gradient(160deg, #faf7f2 0%, #f0ece6 100%);
+}
+
+body.light .sticker-reels {
+  color: #c8c0b0;
+}
+
+body.light .track-title {
+  color: #6a5a48;
+}
+
+/* Tape path stays dark */
+body.light .tape-path {
+  background: #2a2a2a;
+  border-color: #444;
+}
+
+body.light .tape-path::before,
+body.light .tape-path::after {
+  background: linear-gradient(90deg, #3c3c3c 0%, #565656 45%, #3c3c3c 100%);
+  border-color: #2a2a2a;
+}
+
+/* Light theme — controls */
+body.light .ctrl-btn {
+  background: linear-gradient(180deg, #eae6e0 0%, #dedad4 100%);
+  border-color: rgba(0, 0, 0, 0.10);
+  border-bottom-color: rgba(0, 0, 0, 0.20);
+  box-shadow:
+    0 2px 5px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.70);
+}
+
+body.light .ctrl-btn:hover:not(:disabled) {
+  background: linear-gradient(180deg, #f0ece6 0%, #e6e2dc 100%);
+}
+
+body.light .ctrl-btn:active:not(:disabled) {
+  background: linear-gradient(180deg, #d8d4ce 0%, #e0dcd6 100%);
+}
+
+/* YouTube input — light theme */
+body.light .yt-url-input {
+  border-color: rgba(0, 0, 0, 0.10);
+}
+
+body.light .yt-url-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(212, 133, 14, 0.15);
+}
+
+/* ── Drag-over highlight ───────────────────────────────── */
+.player-container.drag-over {
+  outline: 2px dashed var(--accent);
+  outline-offset: 4px;
+}
+
+/* ── Responsive ────────────────────────────────────────── */
+@media (max-width: 520px) {
+  .player-container {
+    width: 100%;
+    border-radius: 0;
+    padding: 18px;
+  }
+
+  .reel-well {
+    width: 84px;
+    height: 84px;
+  }
+
+  .reel {
+    width: 74px;
+    height: 74px;
+  }
+
+  .hub {
+    width: 26px;
+    height: 26px;
+  }
+
+  .hub::after {
+    width: 8px;
+    height: 8px;
+  }
+
+  .cassette-label {
+    height: 76px;
+  }
+}

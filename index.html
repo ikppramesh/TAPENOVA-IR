@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TAPENOVA × IR</title>
+    <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+    <!-- Ambient audio-reactive colour orbs (behind the player) -->
+    <div class="ambient-bg">
+        <div class="orb orb-1" id="orb1"></div>
+        <div class="orb orb-2" id="orb2"></div>
+        <div class="orb orb-3" id="orb3"></div>
+    </div>
+
+    <div class="player-container">
+
+        <!-- Theme toggle -->
+        <button id="themeToggle" class="theme-toggle" title="Toggle light / dark mode">☀</button>
+
+        <!-- Cassette visual -->
+        <div class="cassette">
+            <!-- Three-column row: left reel | centre label | right reel -->
+            <div class="cassette-body">
+                <div class="reel-well">
+                    <div class="reel reel-left">
+                        <div class="reel-tape"></div>
+                        <div class="hub"></div>
+                    </div>
+                </div>
+                <div class="cassette-label">
+                    <!-- Default sticker shown when no album art is embedded -->
+                    <div class="sticker" id="sticker">
+                        <span class="sticker-brand">TAPENOVA × IR</span>
+                        <span class="sticker-reels">◉&nbsp;&nbsp;◉</span>
+                        <span class="track-title" id="trackTitle">───────</span>
+                    </div>
+                    <!-- Album art overlay — hidden until art is extracted -->
+                    <img class="album-art" id="albumArt" alt="" />
+                    <!-- Track title shown on top of album art -->
+                    <div class="art-title" id="artTitle"></div>
+                </div>
+                <div class="reel-well">
+                    <div class="reel reel-right">
+                        <div class="reel-tape"></div>
+                        <div class="hub"></div>
+                    </div>
+                </div>
+            </div>
+            <!-- Tape path — the horizontal slot where tape is visible moving -->
+            <div class="tape-path">
+                <div class="tape-strand"></div>
+            </div>
+        </div>
+
+        <!-- Now Playing -->
+        <div class="now-playing">
+            <div class="track-name" id="trackName">No track loaded</div>
+            <div class="track-meta" id="trackMeta">Drop audio files here or click Load</div>
+        </div>
+
+        <!-- Seek bar -->
+        <div class="seek-container">
+            <input type="range" id="seekBar" class="seek-bar" min="0" max="100" value="0" step="0.1" disabled />
+            <div class="time-display">
+                <span id="currentTime">00:00</span>
+                <span id="duration">00:00</span>
+            </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="control-panel">
+            <input type="file" id="fileInput" accept="audio/*" multiple class="file-input" />
+            <label for="fileInput" class="ctrl-btn">Load</label>
+            <button id="prev" class="ctrl-btn" disabled>&#9198;</button>
+            <button id="playPause" class="ctrl-btn play-btn" disabled>&#9654;</button>
+            <button id="stop" class="ctrl-btn" disabled>&#9632;</button>
+            <button id="next" class="ctrl-btn" disabled>&#9197;</button>
+        </div>
+
+        <!-- YouTube URL input -->
+        <div class="yt-section">
+            <span class="yt-badge">YT</span>
+            <input type="text" id="ytUrlInput" class="yt-url-input"
+                   placeholder="Paste a YouTube URL…" autocomplete="off" spellcheck="false" />
+            <button id="ytLoadBtn" class="yt-load-btn">Play</button>
+        </div>
+
+        <!-- Audio info -->
+        <div class="info">
+            <div class="info-item">
+                <span class="info-label">Sample Rate</span>
+                <span class="info-value"><span id="sampleRate">-</span> kHz</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Bit Depth</span>
+                <span class="info-value"><span id="bitDepth">-</span> bits</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Bitrate</span>
+                <span class="info-value"><span id="bitrate">-</span> kbps</span>
+            </div>
+        </div>
+
+        <!-- Playlist -->
+        <div class="playlist-section">
+            <div class="playlist-header">Queue <span id="queueCount">(0)</span></div>
+            <ul id="playlist" class="playlist"></ul>
+        </div>
+
+        <audio id="audioElement"></audio>
+    </div>
+    <!-- Hidden YouTube IFrame Player container -->
+    <div id="ytPlayerEl" aria-hidden="true"></div>
+    <script src="script.js"></script>
+</body>
+</html>
