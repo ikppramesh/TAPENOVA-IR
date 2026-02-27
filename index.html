@@ -18,11 +18,17 @@
 
     <div class="player-container">
 
-        <!-- Theme toggle -->
-        <button id="themeToggle" class="theme-toggle" title="Toggle light / dark mode">☀</button>
+        <!-- Player top bar: view tabs + theme toggle -->
+        <div class="player-topbar">
+            <div class="view-tabs">
+                <button class="view-tab active" id="tabCassette" title="Cassette view">📼</button>
+                <button class="view-tab"        id="tabVinyl"    title="Vinyl view">💿</button>
+            </div>
+            <button id="themeToggle" class="theme-toggle" title="Toggle light / dark mode">☀</button>
+        </div>
 
-        <!-- ═══ WALKMAN BODY ═══════════════════════════════════════════════════ -->
-        <div class="walkman-body">
+        <!-- ═══ VIEW A: WALKMAN (cassette) ════════════════════════════════════ -->
+        <div class="walkman-body" id="viewCassette">
 
             <!-- Brand strip -->
             <div class="walkman-brand">
@@ -77,23 +83,61 @@
 
             </div><!-- /.cassette-compartment -->
 
-            <!-- Display panel (track name + meta) -->
-            <div class="walkman-display">
-                <div class="track-name" id="trackName">No track loaded</div>
-                <div class="track-meta" id="trackMeta">Drop audio files here or click Load</div>
-            </div>
+        </div><!-- /.walkman-body / #viewCassette -->
 
-            <!-- Transport controls — physical Walkman-style buttons -->
-            <div class="walkman-transport">
-                <input type="file" id="fileInput" accept="audio/*" multiple class="file-input" />
-                <label for="fileInput" class="transport-btn tb-load">&#9167;</label>
-                <button id="prev"      class="transport-btn" disabled>&#9198;</button>
-                <button id="stop"      class="transport-btn" disabled>&#9632;</button>
-                <button id="playPause" class="transport-btn play-btn" disabled>&#9654;</button>
-                <button id="next"      class="transport-btn" disabled>&#9197;</button>
-            </div>
+        <!-- ═══ VIEW B: VINYL TURNTABLE ═══════════════════════════════════════ -->
+        <div class="vinyl-body" id="viewVinyl" hidden>
+            <div class="turntable-surface">
 
-        </div><!-- /.walkman-body -->
+                <!-- Left: platter + vinyl record -->
+                <div class="platter-wrap">
+                    <div class="platter">
+                        <!-- The record — rotates during playback -->
+                        <div class="vinyl" id="vinylDisc">
+                            <div class="vinyl-label" id="vinylLabel">
+                                <img class="vinyl-art" id="vinylArtImg" alt="" />
+                                <div class="vinyl-label-default" id="vinylLabelDefault">
+                                    <span class="vl-brand">TAPENOVA</span>
+                                    <span class="vl-sub">× IR</span>
+                                </div>
+                                <div class="vinyl-spindle"></div>
+                            </div>
+                        </div>
+                        <!-- Shine overlay: sibling of vinyl so it does NOT rotate -->
+                        <div class="vinyl-shine"></div>
+                    </div>
+                </div>
+
+                <!-- Right: tonearm assembly -->
+                <div class="tonearm-area">
+                    <div class="tonearm-base"></div>
+                    <div class="tonearm-wrapper" id="tonearmEl">
+                        <div class="tonearm-arm"></div>
+                        <div class="tonearm-headshell">
+                            <div class="tonearm-stylus"></div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div><!-- /.vinyl-body / #viewVinyl -->
+
+        <!-- ═══ SHARED: display + transport (below both views) ════════════════ -->
+        <!-- Display panel (track name + meta) -->
+        <div class="walkman-display">
+            <div class="track-name" id="trackName">No track loaded</div>
+            <div class="track-meta" id="trackMeta">Drop audio files here or click Load</div>
+        </div>
+
+        <!-- Transport controls -->
+        <div class="walkman-transport">
+            <input type="file" id="fileInput" accept="audio/*" multiple class="file-input" />
+            <label for="fileInput" class="transport-btn tb-load">&#9167;</label>
+            <button id="prev"      class="transport-btn" disabled>&#9198;</button>
+            <button id="stop"      class="transport-btn" disabled>&#9632;</button>
+            <button id="playPause" class="transport-btn play-btn" disabled>&#9654;</button>
+            <button id="next"      class="transport-btn" disabled>&#9197;</button>
+        </div>
 
         <!-- Seek bar -->
         <div class="seek-container">

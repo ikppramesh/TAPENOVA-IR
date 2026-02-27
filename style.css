@@ -722,6 +722,305 @@ body {
   font-weight: 600;
 }
 
+/* ══════════════════════════════════════════════════════════════
+   PLAYER TOP BAR  (view tabs + theme toggle)
+   ══════════════════════════════════════════════════════════════ */
+
+.player-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.view-tabs { display: flex; gap: 6px; }
+
+.view-tab {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--btn-bg);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  color: var(--text);
+  font-size: 1.0em;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.14s, transform 0.12s, box-shadow 0.14s, opacity 0.14s;
+  opacity: 0.42;
+}
+.view-tab:hover {
+  background: #3a3a3a;
+  transform: scale(1.1);
+  opacity: 0.78;
+}
+.view-tab.active {
+  opacity: 1;
+  background: rgba(243, 160, 36, 0.18);
+  border-color: var(--accent);
+  box-shadow: 0 0 10px rgba(243, 160, 36, 0.40);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   VINYL TURNTABLE VIEW
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── Turntable chassis ─────────────────────────────────── */
+.vinyl-body {
+  background-image:
+    repeating-linear-gradient(
+      0deg,
+      transparent,                transparent 3px,
+      rgba(255,255,255,0.008) 3px, rgba(255,255,255,0.008) 6px
+    ),
+    linear-gradient(160deg, #2e2e2e 0%, #1e1e1e 50%, #181818 100%);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.70);
+  margin-bottom: 6px;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.65),
+    0 20px 60px rgba(0, 0, 0, 0.88),
+    0 8px 24px  rgba(0, 0, 0, 0.50),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.turntable-surface {
+  display: flex;
+  align-items: center;
+  padding: 22px 16px 18px;
+  gap: 0;
+  position: relative;
+}
+
+/* ── Platter wrap + platter rim ────────────────────────── */
+.platter-wrap {
+  flex: 0 0 auto;
+  position: relative;
+  width: 214px;
+  height: 214px;
+}
+
+.platter {
+  width: 214px;
+  height: 214px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at center,
+    #111 0%, #111 103px,
+    #2c2c2c 103px, #1a1a1a 107px
+  );
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  box-shadow:
+    inset 0 4px 16px rgba(0, 0, 0, 0.85),
+    inset 0 -2px 8px rgba(255, 255, 255, 0.03),
+    0 4px 22px rgba(0, 0, 0, 0.65);
+}
+
+/* ── Vinyl record (rotates during playback) ────────────── */
+.vinyl {
+  width: 196px;
+  height: 196px;
+  border-radius: 50%;
+  position: relative;
+  /* Groove bands + label separator ring */
+  background:
+    radial-gradient(circle at center,
+      transparent 0%, transparent 36px,
+      rgba(0, 0, 0, 0.55) 36px, rgba(0, 0, 0, 0.55) 39px,
+      transparent 39px
+    ),
+    repeating-radial-gradient(circle at center,
+      #111111 0px, #111111 1px,
+      #080808 1px, #080808 3px
+    ),
+    #090909;
+  will-change: transform;
+  transform-origin: center center;
+  animation: vinyl-spin 1.8s linear infinite;
+  animation-play-state: paused;
+  box-shadow: 0 0 0 1px #000;
+}
+.vinyl.spinning {
+  animation-play-state: running;
+}
+@keyframes vinyl-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* ── Vinyl centre label (rotates with the record) ─────── */
+.vinyl-label {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 74px;
+  height: 74px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: radial-gradient(circle at center, #1e1408 0%, #2c1e0e 55%, #1a1008 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.vinyl-art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: none;
+  border-radius: 50%;
+}
+
+.vinyl-label-default {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.vl-brand {
+  font-size: 0.37em;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--accent-dark);
+}
+.vl-sub {
+  font-size: 0.30em;
+  color: rgba(243, 160, 36, 0.50);
+  letter-spacing: 1px;
+}
+
+/* Centre spindle hole */
+.vinyl-spindle {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #050505;
+  box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.95);
+  z-index: 2;
+}
+
+/* ── Shine overlay (sibling of .vinyl — does NOT rotate) ─ */
+.vinyl-shine {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 200deg at 50% 50%,
+    transparent            0deg,
+    rgba(255,255,255,0.11) 20deg,
+    transparent            46deg,
+    transparent            196deg,
+    rgba(255,255,255,0.06) 217deg,
+    transparent            238deg
+  );
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* ── Tonearm area (right of platter) ───────────────────── */
+.tonearm-area {
+  flex: 1;
+  position: relative;
+  height: 214px;
+}
+
+/* Circular pivot bearing */
+.tonearm-base {
+  position: absolute;
+  top: 16px;
+  right: 22px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 36% 28%, #909090 0%, #585858 40%, #303030 100%);
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.75),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  z-index: 2;
+}
+
+/* Rotating arm assembly — pivot point is at (0, 0) i.e. top-left of this div */
+.tonearm-wrapper {
+  position: absolute;
+  top: 27px;
+  right: 32px;
+  transform-origin: 0 0;
+  transform: rotate(22deg);   /* parked position */
+  transition: transform 0.65s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 3;
+}
+
+/* The arm shaft — tapered from base to headshell */
+.tonearm-arm {
+  width: 7px;
+  height: 115px;
+  background: linear-gradient(90deg, #3e3e3e 0%, #686868 50%, #3a3a3a 100%);
+  border-radius: 3px 3px 1px 1px;
+  clip-path: polygon(12% 0%, 88% 0%, 72% 100%, 28% 100%);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.65);
+}
+
+/* Headshell (cartridge mount at the tip) */
+.tonearm-headshell {
+  width: 16px;
+  height: 18px;
+  background: linear-gradient(140deg, #585858 0%, #363636 100%);
+  border-radius: 2px 2px 5px 5px;
+  margin: -3px auto 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.55);
+  position: relative;
+  display: flex;
+  justify-content: center;
+}
+
+/* Stylus needle */
+.tonearm-stylus {
+  width: 2px;
+  height: 11px;
+  background: linear-gradient(180deg, #bbb 0%, #666 100%);
+  border-radius: 0 0 1px 1px;
+  position: absolute;
+  bottom: -10px;
+}
+
+/* ── Vinyl view — light theme ──────────────────────────── */
+body.light .vinyl-body {
+  background-image:
+    repeating-linear-gradient(
+      0deg,
+      transparent,        transparent 3px,
+      rgba(0,0,0,0.014) 3px, rgba(0,0,0,0.014) 6px
+    ),
+    linear-gradient(160deg, #dedad4 0%, #ccc8c2 50%, #c4c0ba 100%);
+  border-color: rgba(0, 0, 0, 0.12);
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.22),
+    0 4px 14px  rgba(0, 0, 0, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.55);
+}
+/* Vinyl record itself stays dark — it's a black disc regardless of theme */
+
+body.light .view-tab { background: var(--btn-bg); }
+body.light .view-tab:hover { background: #d8d4ce; }
+body.light .view-tab.active {
+  background: rgba(212, 133, 14, 0.14);
+  border-color: var(--accent);
+  box-shadow: 0 0 8px rgba(212, 133, 14, 0.30);
+}
+
 /* ── Walkman display panel ─────────────────────────────── */
 .walkman-display {
   margin: 8px 12px 4px;
@@ -900,9 +1199,6 @@ body {
 
 /* ── Theme toggle button ───────────────────────────────── */
 .theme-toggle {
-  position: absolute;
-  top: 16px;
-  right: 16px;
   width: 32px;
   height: 32px;
   border-radius: 50%;
@@ -1223,8 +1519,33 @@ body.light .yt-url-input:focus {
     padding: 18px;
   }
 
-  .walkman-body {
+  .walkman-body,
+  .vinyl-body {
     border-radius: 0;
+  }
+
+  .platter-wrap,
+  .platter {
+    width: 174px;
+    height: 174px;
+  }
+
+  .vinyl {
+    width: 160px;
+    height: 160px;
+  }
+
+  .vinyl-label {
+    width: 60px;
+    height: 60px;
+  }
+
+  .tonearm-area {
+    height: 174px;
+  }
+
+  .tonearm-arm {
+    height: 88px;
   }
 
   .cassette-compartment {

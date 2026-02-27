@@ -28,6 +28,16 @@ const playerContainer = document.querySelector('.player-container');
 const cassetteEl      = document.querySelector('.cassette');
 const compartmentLid  = document.getElementById('compartmentLid');
 const wbLed           = document.getElementById('wbLed');
+
+// ── View switcher refs ──────────────────────────────────────────────────────
+const viewCassette      = document.getElementById('viewCassette');
+const viewVinyl         = document.getElementById('viewVinyl');
+const tabCassette       = document.getElementById('tabCassette');
+const tabVinyl          = document.getElementById('tabVinyl');
+const vinylDisc         = document.getElementById('vinylDisc');
+const tonearmEl         = document.getElementById('tonearmEl');
+const vinylArtImg       = document.getElementById('vinylArtImg');
+const vinylLabelDefault = document.getElementById('vinylLabelDefault');
 const orb1El          = document.getElementById('orb1');
 const orb2El          = document.getElementById('orb2');
 const orb3El          = document.getElementById('orb3');
@@ -52,6 +62,30 @@ themeToggle.addEventListener('click', () => {
     localStorage.setItem('theme', isLight ? 'light' : 'dark');
 });
 
+// ── View switcher ───────────────────────────────────────────────────────────
+function switchView(view) {
+    currentView = view;
+    localStorage.setItem('view', view);
+    viewCassette.hidden = (view !== 'cassette');
+    viewVinyl.hidden    = (view !== 'vinyl');
+    tabCassette.classList.toggle('active', view === 'cassette');
+    tabVinyl.classList.toggle('active',    view === 'vinyl');
+}
+
+tabCassette.addEventListener('click', () => switchView('cassette'));
+tabVinyl.addEventListener('click',    () => switchView('vinyl'));
+
+// Restore last view on load (runs after DOM refs are set)
+switchView(currentView);
+
+// ── Tonearm tracking ────────────────────────────────────────────────────────
+function updateTonearm(fraction) {
+    const angle = (fraction < 0 || isNaN(fraction))
+        ? 22                  // parked (off record)
+        : 32 + fraction * 30; // 32° (track start) → 62° (track end)
+    tonearmEl.style.transform = `rotate(${angle}deg)`;
+}
+
 // ── State ──────────────────────────────────────────────────────────────────
 let audioContext;
 let playlist      = [];     // array of File objects
@@ -60,6 +94,7 @@ let isSeeking     = false;
 let currentArtUrl = null;   // blob URL for current album art (revoke on track change)
 let cassetteAnimating = false; // true while eject/flip/insert animation is running
 let pendingPlay       = false; // suppresses audio.play() inside loadTrack during animation
+let currentView       = localStorage.getItem('view') || 'cassette'; // 'cassette' | 'vinyl'
 
 // ── Visualiser state ────────────────────────────────────────────────────────
 let analyserNode  = null;
@@ -145,6 +180,14 @@ async function loadTrack(index) {
     artTitle.style.display            = 'none';
     sticker.style.display             = 'flex';
 
+    // Reset vinyl label and tonearm for new track
+    vinylArtImg.style.display              = 'none';
+    vinylLabelDefault.style.display        = 'flex';
+    tonearmEl.style.transition             = 'none';   // snap to start instantly
+    tonearmEl.style.transform              = 'rotate(32deg)';
+    // re-enable transition after frame
+    requestAnimationFrame(() => { tonearmEl.style.transition = ''; });
+
     renderPlaylist();
 
     // Read audio metadata via Web Audio API
@@ -164,6 +207,10 @@ async function loadTrack(index) {
             artTitle.textContent      = parseFilename(file.name).title;
             artTitle.style.display    = 'block';
             sticker.style.display     = 'none';
+            // Mirror art on the vinyl label
+            vinylArtImg.src              = artUrl;
+            vinylArtImg.style.display    = 'block';
+            vinylLabelDefault.style.display = 'none';
         }
 
         // WAV bit depth — read directly from the fmt chunk (offset 34, little-endian uint16)
@@ -518,6 +565,7 @@ audio.addEventListener('play', () => {
     reelLeft.classList.add('spin');
     reelRight.classList.add('spin');
     tapeStrand.classList.add('rolling');
+    vinylDisc.classList.add('spinning');
     playPauseBtn.innerHTML = '&#9646;&#9646;';
     wbLed.classList.add('active');
     ensureAnalyser();
@@ -547,12 +595,16 @@ audio.addEventListener('timeupdate', () => {
     // Tape coil thickness: left reel drains (22→2px), right reel fills (2→22px)
     reelLeftTape.style.borderWidth  = Math.max(2,  22 - 20 * fraction) + 'px';
     reelRightTape.style.borderWidth = Math.min(22,  2 + 20 * fraction) + 'px';
+
+    // Tonearm sweeps from 32° (start) to 62° (end) as track progresses
+    updateTonearm(fraction);
 });
 
 function stopReels() {
     reelLeft.classList.remove('spin');
     reelRight.classList.remove('spin');
     tapeStrand.classList.remove('rolling');
+    vinylDisc.classList.remove('spinning');
 }
 
 // ── Drag-and-drop ──────────────────────────────────────────────────────────
@@ -587,6 +639,13 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 async function changeTrack(index) {
     if (index < 0 || index >= playlist.length) return;
+
+    // In vinyl view, skip the lid/cassette animation — just load directly
+    if (currentView === 'vinyl') {
+        loadTrack(index);
+        return;
+    }
+
     if (cassetteAnimating) return;
     cassetteAnimating = true;
     pendingPlay       = true;
@@ -816,12 +875,20 @@ async function loadYouTube(videoId) {
 
     // Show YouTube thumbnail as album art immediately (no API key needed)
     if (currentArtUrl) { URL.revokeObjectURL(currentArtUrl); currentArtUrl = null; }
-    albumArtImg.src           = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+    const ytThumb             = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+    albumArtImg.src           = ytThumb;
     albumArtImg.style.display = 'block';
     sticker.style.display     = 'none';
     artTitle.textContent      = '';
     artTitle.style.display    = 'none';
     trackTitleEl.textContent  = '───────';
+    // Mirror thumbnail on vinyl label
+    vinylArtImg.src              = ytThumb;
+    vinylArtImg.style.display    = 'block';
+    vinylLabelDefault.style.display = 'none';
+    tonearmEl.style.transition   = 'none';
+    tonearmEl.style.transform    = 'rotate(32deg)';
+    requestAnimationFrame(() => { tonearmEl.style.transition = ''; });
 
     // Placeholder while we fetch metadata
     applyMarquee(trackNameEl, 'Loading…');
@@ -879,11 +946,12 @@ function onYTStateChange(state) {
         reelLeft.classList.add('spin');
         reelRight.classList.add('spin');
         tapeStrand.classList.add('rolling');
+        vinylDisc.classList.add('spinning');
         playPauseBtn.innerHTML = '&#9646;&#9646;';
         wbLed.classList.add('active');
         startYTSeekUpdate();
     } else if (state === 2) {
-        stopReels();
+        stopReels();   // stopReels also removes vinylDisc.spinning
         stopYTSeekUpdate();
         playPauseBtn.innerHTML = '&#9654;';
         wbLed.classList.remove('active');
