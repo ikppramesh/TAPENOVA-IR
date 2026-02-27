@@ -25,6 +25,9 @@ const trackMetaEl     = document.getElementById('trackMeta');
 const playlistEl      = document.getElementById('playlist');
 const queueCountEl    = document.getElementById('queueCount');
 const playerContainer = document.querySelector('.player-container');
+const cassetteEl      = document.querySelector('.cassette');
+const compartmentLid  = document.getElementById('compartmentLid');
+const wbLed           = document.getElementById('wbLed');
 const orb1El          = document.getElementById('orb1');
 const orb2El          = document.getElementById('orb2');
 const orb3El          = document.getElementById('orb3');
@@ -55,12 +58,18 @@ let playlist      = [];     // array of File objects
 let currentIdx    = -1;
 let isSeeking     = false;
 let currentArtUrl = null;   // blob URL for current album art (revoke on track change)
+let cassetteAnimating = false; // true while eject/flip/insert animation is running
+let pendingPlay       = false; // suppresses audio.play() inside loadTrack during animation
 
 // ── Visualiser state ────────────────────────────────────────────────────────
 let analyserNode  = null;
 let analyserData  = null;
 let mediaSource   = null;   // MediaElementSourceNode (created once)
 let rafId         = null;   // requestAnimationFrame handle
+
+// ── Cassette scrub-sound state ──────────────────────────────────────────────
+let ffCtx   = null;   // dedicated AudioContext for the FF sound (kept alive across scrubs)
+let ffNodes = null;   // active sound nodes (null when not scrubbing)
 
 // ── YouTube state ──────────────────────────────────────────────────────────
 let ytMode       = false;   // true when a YouTube video is active
@@ -174,7 +183,7 @@ async function loadTrack(index) {
         console.warn('Audio metadata error:', err);
     }
 
-    audio.play();
+    if (!pendingPlay) audio.play();
 }
 
 // ── WAV bit-depth parser ───────────────────────────────────────────────────
@@ -300,7 +309,7 @@ function renderPlaylist() {
         const li = document.createElement('li');
         li.textContent = `${i + 1}. ${parseFilename(file.name).title}`;
         if (i === currentIdx) li.classList.add('active');
-        li.addEventListener('click', () => loadTrack(i));
+        li.addEventListener('click', () => changeTrack(i));
         playlistEl.appendChild(li);
     });
 }
@@ -346,19 +355,19 @@ prevBtn.addEventListener('click', () => {
     if (audio.currentTime > 3 && currentIdx >= 0) {
         audio.currentTime = 0;
     } else {
-        loadTrack(Math.max(0, currentIdx - 1));
+        changeTrack(Math.max(0, currentIdx - 1));
     }
 });
 
 nextBtn.addEventListener('click', () => {
     if (ytMode) return;  // no prev/next in YouTube mode
-    loadTrack(Math.min(playlist.length - 1, currentIdx + 1));
+    changeTrack(Math.min(playlist.length - 1, currentIdx + 1));
 });
 
 // Auto-advance to next track
 audio.addEventListener('ended', () => {
     if (currentIdx < playlist.length - 1) {
-        loadTrack(currentIdx + 1);
+        changeTrack(currentIdx + 1);
     } else {
         stopReels();
         stopViz();
@@ -366,9 +375,113 @@ audio.addEventListener('ended', () => {
     }
 });
 
+// ── Cassette FF scrub sound ─────────────────────────────────────────────────
+// Synthesises the characteristic high-pitched whirring + tape-hiss heard when
+// fast-forwarding a physical cassette.  Pure Web Audio — no audio files needed.
+
+function startCassetteFFSound() {
+    if (ffNodes) return;   // already running
+
+    if (!ffCtx || ffCtx.state === 'closed') {
+        ffCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (ffCtx.state === 'suspended') ffCtx.resume();
+
+    const ctx = ffCtx;
+    const now = ctx.currentTime;
+
+    // ── White-noise source (tape hiss) ────────────────────────────────────
+    // 2-second looped buffer so it never sounds repetitive
+    const bufLen   = ctx.sampleRate * 2;
+    const noiseBuf = ctx.createBuffer(1, bufLen, ctx.sampleRate);
+    const nd       = noiseBuf.getChannelData(0);
+    for (let i = 0; i < bufLen; i++) nd[i] = Math.random() * 2 - 1;
+
+    const noise = ctx.createBufferSource();
+    noise.buffer = noiseBuf;
+    noise.loop   = true;
+
+    // Strip low-end — keep only the airy hiss region
+    const hp = ctx.createBiquadFilter();
+    hp.type            = 'highpass';
+    hp.frequency.value = 2200;
+    hp.Q.value         = 0.6;
+
+    // Boost the characteristic "squeal" band around 4 kHz
+    const bp = ctx.createBiquadFilter();
+    bp.type            = 'bandpass';
+    bp.frequency.value = 4200;
+    bp.Q.value         = 2.8;
+
+    const noiseGain     = ctx.createGain();
+    noiseGain.gain.value = 0.85;
+
+    noise.connect(hp);
+    hp.connect(bp);
+    bp.connect(noiseGain);
+
+    // ── Motor oscillator (sawtooth ≈ mechanical whine) ────────────────────
+    const osc  = ctx.createOscillator();
+    osc.type             = 'sawtooth';
+    osc.frequency.value  = 2900;
+
+    // LFO adds ≈12 Hz flutter — the slight pitch wobble of real tape transport
+    const lfo     = ctx.createOscillator();
+    lfo.type            = 'sine';
+    lfo.frequency.value = 12;
+
+    const lfoGain       = ctx.createGain();
+    lfoGain.gain.value  = 140;   // ±140 Hz pitch deviation
+
+    lfo.connect(lfoGain);
+    lfoGain.connect(osc.frequency);
+
+    const oscGain       = ctx.createGain();
+    oscGain.gain.value  = 0.22;
+
+    osc.connect(oscGain);
+
+    // ── Master gain — fade in quickly so it doesn't click ────────────────
+    const master = ctx.createGain();
+    master.gain.setValueAtTime(0, now);
+    master.gain.linearRampToValueAtTime(0.14, now + 0.05);
+
+    noiseGain.connect(master);
+    oscGain.connect(master);
+    master.connect(ctx.destination);
+
+    noise.start(now);
+    osc.start(now);
+    lfo.start(now);
+
+    ffNodes = { noise, osc, lfo, master };
+}
+
+function stopCassetteFFSound() {
+    if (!ffNodes || !ffCtx) return;
+    const { noise, osc, lfo, master } = ffNodes;
+    const now = ffCtx.currentTime;
+
+    // Fade out quickly to avoid a click
+    master.gain.setValueAtTime(master.gain.value, now);
+    master.gain.linearRampToValueAtTime(0, now + 0.07);
+
+    setTimeout(() => {
+        try { noise.stop(); } catch (_) {}
+        try { osc.stop();   } catch (_) {}
+        try { lfo.stop();   } catch (_) {}
+    }, 90);
+
+    ffNodes = null;
+}
+
+// Safety net: if the mouse is released anywhere on the page, stop the sound
+document.addEventListener('mouseup',  stopCassetteFFSound);
+document.addEventListener('touchend', stopCassetteFFSound, { passive: true });
+
 // ── Seek bar ───────────────────────────────────────────────────────────────
-seekBar.addEventListener('mousedown',  () => { isSeeking = true; });
-seekBar.addEventListener('touchstart', () => { isSeeking = true; }, { passive: true });
+seekBar.addEventListener('mousedown',  () => { isSeeking = true; startCassetteFFSound(); });
+seekBar.addEventListener('touchstart', () => { isSeeking = true; startCassetteFFSound(); }, { passive: true });
 
 // Preview time while dragging
 seekBar.addEventListener('input', () => {
@@ -381,6 +494,7 @@ seekBar.addEventListener('input', () => {
 
 // Commit seek on release
 seekBar.addEventListener('change', () => {
+    stopCassetteFFSound();   // kill the FF whirr as soon as the thumb is released
     if (ytMode) {
         if (ytPlayer && ytPlayer.getDuration) {
             ytPlayer.seekTo((seekBar.value / 100) * ytPlayer.getDuration(), true);
@@ -405,6 +519,7 @@ audio.addEventListener('play', () => {
     reelRight.classList.add('spin');
     tapeStrand.classList.add('rolling');
     playPauseBtn.innerHTML = '&#9646;&#9646;';
+    wbLed.classList.add('active');
     ensureAnalyser();
     startViz();
 });
@@ -412,6 +527,7 @@ audio.addEventListener('play', () => {
 audio.addEventListener('pause', () => {
     stopReels();
     playPauseBtn.innerHTML = '&#9654;';
+    wbLed.classList.remove('active');
     stopViz();
 });
 
@@ -463,6 +579,61 @@ function formatTime(sec) {
     const m = Math.floor(sec / 60);
     const s = Math.floor(sec % 60);
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+}
+
+// ── Cassette change animation ───────────────────────────────────────────────
+
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+async function changeTrack(index) {
+    if (index < 0 || index >= playlist.length) return;
+    if (cassetteAnimating) return;
+    cassetteAnimating = true;
+    pendingPlay       = true;
+
+    // Freeze playback; LED goes off
+    if (!audio.paused) audio.pause();
+    wbLed.classList.remove('active');
+
+    const el = cassetteEl;
+
+    // ── Phase 1: Lid opens ────────────────────────────────────────────────
+    compartmentLid.classList.add('open');
+    await sleep(440);
+
+    // ── Phase 2: Cassette ejects upward ──────────────────────────────────
+    el.style.transition = 'transform 0.38s cubic-bezier(0.4, 0, 1, 1)';
+    el.style.transform  = 'translateY(-195px) scale(1.04)';
+    await sleep(380);
+
+    // ── Phase 3: Cassette flips; load next track silently in background ──
+    el.style.transition = 'transform 0.55s ease-in-out';
+    el.style.transform  = 'translateY(-195px) scale(1.04) rotateX(180deg)';
+    loadTrack(index);   // pendingPlay=true suppresses audio.play() inside loadTrack
+    await sleep(550);
+
+    // ── Phase 4: Cassette drops back in (spring bounce) ──────────────────
+    el.style.transition = 'transform 0.50s cubic-bezier(0.34, 1.56, 0.64, 1)';
+    el.style.transform  = 'translateY(0) scale(1) rotateX(360deg)';
+    await sleep(500);
+
+    // Clear transform (360deg ≡ 0deg — no visible jump)
+    el.style.transition = '';
+    el.style.transform  = '';
+
+    // ── Phase 5: Lid closes ───────────────────────────────────────────────
+    compartmentLid.classList.remove('open');
+    await sleep(450);
+
+    // ── Phase 6: Start playback ───────────────────────────────────────────
+    pendingPlay       = false;
+    cassetteAnimating = false;
+
+    if (audio.readyState >= 2) {
+        audio.play().catch(() => {});
+    } else {
+        audio.addEventListener('canplay', () => audio.play().catch(() => {}), { once: true });
+    }
 }
 
 // ── Audio visualiser ───────────────────────────────────────────────────────
@@ -709,15 +880,18 @@ function onYTStateChange(state) {
         reelRight.classList.add('spin');
         tapeStrand.classList.add('rolling');
         playPauseBtn.innerHTML = '&#9646;&#9646;';
+        wbLed.classList.add('active');
         startYTSeekUpdate();
     } else if (state === 2) {
         stopReels();
         stopYTSeekUpdate();
         playPauseBtn.innerHTML = '&#9654;';
+        wbLed.classList.remove('active');
     } else if (state === 0) {
         stopReels();
         stopYTSeekUpdate();
         playPauseBtn.innerHTML = '&#9654;';
+        wbLed.classList.remove('active');
     }
 }
 

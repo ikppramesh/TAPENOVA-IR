@@ -43,12 +43,145 @@ body {
   z-index: 1;
 }
 
+/* ══════════════════════════════════════════════════════════════
+   WALKMAN BODY
+   ══════════════════════════════════════════════════════════════ */
+
+.walkman-body {
+  /* Brushed-metal horizontal lines + gunmetal dark gradient */
+  background-image:
+    repeating-linear-gradient(
+      0deg,
+      transparent,        transparent 2px,
+      rgba(255,255,255,0.015) 2px, rgba(255,255,255,0.015) 4px
+    ),
+    linear-gradient(160deg, #545454 0%, #3e3e3e 35%, #2e2e2e 70%, #242424 100%);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.70);
+  margin-bottom: 20px;
+  position: relative;
+  overflow: visible;   /* cassette must be able to eject above the walkman */
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.65),
+    0 20px 60px rgba(0, 0, 0, 0.85),
+    0 8px 24px  rgba(0, 0, 0, 0.50),
+    inset 0 1px 0 rgba(255, 255, 255, 0.13);
+}
+
+/* ── Brand strip ──────────────────────────────────────────── */
+.walkman-brand {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 18px 6px;
+}
+
+.wb-logo {
+  font-size: 0.50em;
+  font-weight: 800;
+  letter-spacing: 3.5px;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.28);
+  user-select: none;
+}
+
+/* Playback indicator LED */
+.wb-led {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #1c1c1c;
+  border: 1px solid rgba(0, 0, 0, 0.7);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.9);
+  transition: background 0.25s, box-shadow 0.25s;
+  flex-shrink: 0;
+}
+
+.wb-led.active {
+  background: var(--accent);
+  box-shadow:
+    0 0 7px rgba(243, 160, 36, 0.90),
+    0 0 2px var(--accent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.30);
+}
+
+/* ── Cassette compartment ────────────────────────────────── */
+.cassette-compartment {
+  margin: 0 12px;
+  border-radius: 10px;
+  background: #0e0e0e;
+  position: relative;
+  perspective: 900px;
+  perspective-origin: 50% -20%;   /* vanishing point above = realistic lid hinge */
+  overflow: visible;
+  z-index: 5;
+  box-shadow:
+    inset 0 4px 18px rgba(0, 0, 0, 0.97),
+    inset 0 0 0 1px rgba(0, 0, 0, 0.90),
+    0 2px 0 rgba(255, 255, 255, 0.04);
+}
+
+/* ── Compartment lid ─────────────────────────────────────── */
+.compartment-lid {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  border-radius: 10px;
+
+  /* Transparent window in the centre; opaque metal frame around the edges */
+  background: transparent;
+  background-image:
+    repeating-linear-gradient(
+      0deg,
+      transparent,        transparent 2px,
+      rgba(255,255,255,0.012) 2px, rgba(255,255,255,0.012) 4px
+    );
+
+  /* The "frame" is created via inset box-shadow — see-through centre */
+  box-shadow:
+    inset 0 0 0 14px rgba(56, 56, 56, 0.97),
+    inset 0 0 0 15px rgba(0, 0, 0, 0.55),
+    0 3px 6px rgba(0, 0, 0, 0.50);
+
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.50);
+
+  /* Hinge at the TOP of the lid — opens backward */
+  transform-origin: top center;
+  transform: rotateX(0deg);
+  transition: transform 0.42s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Lid open state */
+.compartment-lid.open {
+  transform: rotateX(-105deg);
+}
+
+/* Hinge bar at the very top of the lid */
+.lid-hinge {
+  position: absolute;
+  top: 0;
+  left: 12%;
+  right: 12%;
+  height: 5px;
+  border-radius: 0 0 4px 4px;
+  background: linear-gradient(180deg, #606060 0%, #363636 100%);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+}
+
+/* ── Cassette scene — perspective wrapper for cassette flip ─ */
+.cassette-scene {
+  perspective: 900px;
+  perspective-origin: 50% 50%;
+}
+
 /* ── Cassette body ─────────────────────────────────────── */
 .cassette {
   width: 100%;
   border: 1px solid #0c0c0c;
   border-radius: 14px;
-  margin-bottom: 20px;
+  margin-bottom: 0;
   overflow: hidden;
   position: relative;
 
@@ -72,6 +205,8 @@ body {
     inset 1px 0 0 rgba(255, 255, 255, 0.025),
     inset -1px 0 0 rgba(255, 255, 255, 0.025),
     0 8px 28px rgba(0, 0, 0, 0.55);
+  will-change: transform;
+  transform-origin: center center;
 }
 
 /* Three-column row: left well | label | right well */
@@ -587,6 +722,113 @@ body {
   font-weight: 600;
 }
 
+/* ── Walkman display panel ─────────────────────────────── */
+.walkman-display {
+  margin: 8px 12px 4px;
+  padding: 8px 14px;
+  background: rgba(0, 0, 0, 0.28);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-top-color: rgba(0, 0, 0, 0.5);
+  /* track-name + track-meta inside inherit the existing rules */
+}
+
+/* ── Walkman transport controls ────────────────────────── */
+.walkman-transport {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 14px 16px;
+}
+
+/* Physical Walkman button — raised 3-D look */
+.transport-btn {
+  background: linear-gradient(180deg, #484848 0%, #2e2e2e 100%);
+  color: var(--text);
+  border: 1px solid rgba(0, 0, 0, 0.55);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.80);
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-size: 0.92em;
+  cursor: pointer;
+  user-select: none;
+  line-height: 1;
+  /* Bottom shadow simulates a raised physical key */
+  box-shadow:
+    0 4px 0 #161616,
+    0 5px 10px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.10);
+  transition: transform 0.07s, box-shadow 0.07s, background 0.10s;
+}
+
+.transport-btn:hover:not(:disabled) {
+  background: linear-gradient(180deg, #545454 0%, #383838 100%);
+}
+
+.transport-btn:active:not(:disabled) {
+  transform: translateY(3px);
+  box-shadow:
+    0 1px 0 #161616,
+    0 2px 5px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(0, 0, 0, 0.10);
+}
+
+.transport-btn:disabled {
+  opacity: 0.25;
+  cursor: default;
+}
+
+/* Load (eject) button — same shape, slightly wider emoji */
+.tb-load {
+  cursor: pointer;
+  display: inline-block;
+  padding: 10px 14px;
+  font-size: 1.0em;
+}
+
+/* Play / Pause button — round amber key */
+.transport-btn.play-btn {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(
+    circle at 40% 34%,
+    #ffc848 0%,
+    var(--accent) 48%,
+    var(--accent-dark) 100%
+  );
+  color: #111;
+  font-size: 1.0em;
+  font-weight: 700;
+  border: none;
+  box-shadow:
+    0 4px 0 #8a5800,
+    0 6px 22px rgba(243, 160, 36, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.38);
+  transition: transform 0.07s, box-shadow 0.10s;
+}
+
+.transport-btn.play-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow:
+    0 5px 0 #8a5800,
+    0 8px 28px rgba(243, 160, 36, 0.72),
+    inset 0 1px 0 rgba(255, 255, 255, 0.42);
+}
+
+.transport-btn.play-btn:active:not(:disabled) {
+  transform: translateY(3px);
+  box-shadow:
+    0 1px 0 #8a5800,
+    0 3px 10px rgba(243, 160, 36, 0.38),
+    inset 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+
 /* ── Ambient audio-reactive background ────────────────── */
 .ambient-bg {
   position: fixed;
@@ -785,6 +1027,81 @@ body.light .theme-toggle:hover {
   background: #d8d4ce;
 }
 
+/* Walkman body — silver-beige */
+body.light .walkman-body {
+  background-image:
+    repeating-linear-gradient(
+      0deg,
+      transparent,    transparent 2px,
+      rgba(0,0,0,0.018) 2px, rgba(0,0,0,0.018) 4px
+    ),
+    linear-gradient(160deg, #c8c4be 0%, #b8b4ae 35%, #acacaa 70%, #a4a0a0 100%);
+  border-color: rgba(0, 0, 0, 0.15);
+  border-bottom-color: rgba(0, 0, 0, 0.28);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.12),
+    0 16px 50px rgba(0, 0, 0, 0.28),
+    0 6px 18px rgba(0, 0, 0, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.60);
+}
+
+body.light .wb-logo { color: rgba(0, 0, 0, 0.28); }
+
+body.light .wb-led {
+  background: #9a9692;
+  border-color: rgba(0, 0, 0, 0.25);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.20);
+}
+
+body.light .cassette-compartment {
+  background: #d0ccc6;
+  box-shadow:
+    inset 0 3px 14px rgba(0, 0, 0, 0.28),
+    inset 0 0 0 1px rgba(0, 0, 0, 0.18),
+    0 2px 0 rgba(255, 255, 255, 0.20);
+}
+
+body.light .compartment-lid {
+  box-shadow:
+    inset 0 0 0 14px rgba(176, 172, 166, 0.97),
+    inset 0 0 0 15px rgba(0, 0, 0, 0.12),
+    0 3px 6px rgba(0, 0, 0, 0.15);
+  border-color: rgba(0, 0, 0, 0.10);
+  border-bottom-color: rgba(0, 0, 0, 0.20);
+}
+
+body.light .lid-hinge {
+  background: linear-gradient(180deg, #c0bcb8 0%, #a0a09e 100%);
+}
+
+body.light .walkman-display {
+  background: rgba(0, 0, 0, 0.06);
+  border-color: rgba(0, 0, 0, 0.08);
+  border-top-color: rgba(0, 0, 0, 0.12);
+}
+
+body.light .transport-btn {
+  background: linear-gradient(180deg, #ccc8c2 0%, #b4b0aa 100%);
+  color: #1a1a1a;
+  border-color: rgba(0, 0, 0, 0.22);
+  border-bottom-color: rgba(0, 0, 0, 0.38);
+  box-shadow:
+    0 4px 0 #7a7672,
+    0 5px 10px rgba(0, 0, 0, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.55);
+}
+
+body.light .transport-btn:hover:not(:disabled) {
+  background: linear-gradient(180deg, #d8d4ce 0%, #c0bcb6 100%);
+}
+
+body.light .transport-btn:active:not(:disabled) {
+  box-shadow:
+    0 1px 0 #7a7672,
+    0 2px 5px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(0, 0, 0, 0.06);
+}
+
 /* Cassette shell — warm beige plastic */
 body.light .cassette {
   background-color: #dedad4;
@@ -904,6 +1221,29 @@ body.light .yt-url-input:focus {
     width: 100%;
     border-radius: 0;
     padding: 18px;
+  }
+
+  .walkman-body {
+    border-radius: 0;
+  }
+
+  .cassette-compartment {
+    margin: 0 8px;
+  }
+
+  .walkman-transport {
+    gap: 6px;
+    padding: 8px 10px 14px;
+  }
+
+  .transport-btn {
+    padding: 9px 12px;
+    font-size: 0.82em;
+  }
+
+  .transport-btn.play-btn {
+    width: 46px;
+    height: 46px;
   }
 
   .reel-well {
