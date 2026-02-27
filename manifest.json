@@ -1,0 +1,20 @@
+{
+  "name": "TAPENOVA-IR Audio Player",
+  "short_name": "TAPENOVA-IR",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#000",
+  "theme_color": "#f3a024",
+  "icons": [
+    {
+      "src": "tapenovair.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "tapenovair.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

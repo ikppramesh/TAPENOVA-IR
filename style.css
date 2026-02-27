@@ -827,6 +827,7 @@ body {
   height: 196px;
   border-radius: 50%;
   position: relative;
+  z-index: 1; /* keep beneath the tonearm */
   /* Groove bands + label separator ring */
   background:
     radial-gradient(circle at center,
@@ -841,7 +842,8 @@ body {
     #090909;
   will-change: transform;
   transform-origin: center center;
-  animation: vinyl-spin 1.8s linear infinite;
+  /* spin counter‑clockwise to match real turntable direction */
+  animation: vinyl-spin 1.8s linear infinite reverse;
   animation-play-state: paused;
   box-shadow: 0 0 0 1px #000;
 }
@@ -932,7 +934,10 @@ body {
 
 /* ── Tonearm area (right of platter) ───────────────────── */
 .tonearm-area {
-  flex: 1;
+  /* shrink container so the pivot can sit adjacent to the record edge
+     rather than at the far right of a flex-grown area */
+  flex: 0 0 8px;
+  width: 8px;
   position: relative;
   height: 214px;
 }
@@ -941,7 +946,8 @@ body {
 .tonearm-base {
   position: absolute;
   top: 16px;
-  right: 22px;
+  /* match the wrapper pivot offset so the bearing lines up */
+  right: 17px;
   width: 22px;
   height: 22px;
   border-radius: 50%;
@@ -956,11 +962,12 @@ body {
 .tonearm-wrapper {
   position: absolute;
   top: 27px;
-  right: 32px;
-  transform-origin: 0 0;
-  transform: rotate(22deg);   /* parked position */
+  right: 17px; /* moved left to align pivot with record edge */
+  /* pivot at the wrapper's top-right so the arm rotates toward the record */
+  transform-origin: 100% 0;
+  transform: rotate(-45deg);   /* start (leftmost) position */
   transition: transform 0.65s cubic-bezier(0.4, 0, 0.2, 1);
-  z-index: 3;
+  z-index: 5; /* highest stacking so arm sits over vinyl */
 }
 
 /* The arm shaft — tapered from base to headshell */
@@ -1025,10 +1032,10 @@ body.light .view-tab.active {
 .walkman-display {
   margin: 8px 12px 4px;
   padding: 8px 14px;
-  background: rgba(0, 0, 0, 0.28);
+  background: rgba(0, 0, 0, 0.06);
   border-radius: 8px;
   border: 1px solid rgba(255, 255, 255, 0.04);
-  border-top-color: rgba(0, 0, 0, 0.5);
+  border-top-color: rgba(0, 0, 0, 0.12);
   /* track-name + track-meta inside inherit the existing rules */
 }
 
@@ -1542,6 +1549,8 @@ body.light .yt-url-input:focus {
 
   .tonearm-area {
     height: 174px;
+    flex: 0 0 8px;
+    width: 8px;
   }
 
   .tonearm-arm {
@@ -1591,3 +1600,182 @@ body.light .yt-url-input:focus {
     height: 76px;
   }
 }
+
+/* ── Vynx player specific styles ───────────────────────────────────────── */
+body.vynx-player {
+  background: radial-gradient(circle at center, #0a0a0a, #202020);
+  color: var(--text);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+}
+
+.vp-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  width: 100%;
+  max-width: 480px;
+}
+
+.vp-header-left {
+  display: flex;
+  flex-direction: column;
+}
+
+.vp-title {
+  font-size: 1.5em;
+  margin: 0;
+}
+
+.vp-tagline {
+  font-size: 0.9em;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+.vp-main {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 480px;
+}
+
+.vp-visualiser {
+  margin: 24px 0;
+}
+
+.vp-spinner {
+  width: 240px;
+  height: 240px;
+  border-radius: 50%;
+  background: radial-gradient(circle at center, #333, #111);
+  box-shadow: 0 0 0 8px var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.vp-record {
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  background: radial-gradient(circle at center, #222, #000);
+  position: relative;
+}
+
+.vp-label {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: var(--accent);
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.vp-spinner.spin .vp-record {
+  animation: spin-cw 3s linear infinite;
+}
+
+/* subtle glow around the spinner */
+.vp-spinner::before {
+  content: '';
+  position: absolute;
+  width: 260px;
+  height: 260px;
+  border-radius: 50%;
+  box-shadow: 0 0 40px rgba(243, 160, 36, 0.4);
+  pointer-events: none;
+}
+
+/* tighten up button sizes on very small screens */
+@media (max-width: 520px) {
+  .vp-btn {
+    padding: 6px 8px;
+    font-size: 1em;
+  }
+}
+
+.vp-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  max-width: 480px;
+}
+
+.vp-btn {
+  background: var(--btn-bg);
+  color: var(--text);
+  border: none;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 1.1em;
+  cursor: pointer;
+}
+
+.vp-controls .vp-seek {
+  flex: 1;
+}
+
+.vp-info {
+  margin-top: 16px;
+  text-align: center;
+}
+
+.vp-playlist {
+  margin-top: 16px;
+  width: 100%;
+}
+
+.vp-playlist-list {
+  list-style: none;
+  max-height: 150px;
+  overflow-y: auto;
+  padding: 0 16px;
+}
+
+.vp-footer {
+  margin-top: 24px;
+  text-align: center;
+  width: 100%;
+  max-width: 480px;
+}
+
+.vp-load-btn {
+  background: var(--accent);
+  color: #000;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+/* Sound wave container */
+.sound-wave-container {
+  position: absolute;
+  top: 50%;
+  right: 16px;
+  transform: translateY(-50%);
+  width: 120px;
+  height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.sound-wave-bar {
+  width: 4px;
+  margin: 0 2px;
+  background: var(--accent);
+  /* height controlled by JS */
+}
+
+/* remove generic animation: heights are updated directly */

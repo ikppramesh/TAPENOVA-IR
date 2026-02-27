@@ -16,6 +16,10 @@ const reelRight       = document.querySelector('.reel-right');
 const reelLeftTape    = document.querySelector('.reel-left  .reel-tape');
 const reelRightTape   = document.querySelector('.reel-right .reel-tape');
 const tapeStrand      = document.querySelector('.tape-strand');
+
+// Vynx spinner element (present only on the alternate page)
+const vpSpinner       = document.getElementById('vpSpinner');
+
 const trackTitleEl    = document.getElementById('trackTitle');
 const sticker         = document.getElementById('sticker');
 const albumArtImg     = document.getElementById('albumArt');
@@ -36,6 +40,7 @@ const tabCassette       = document.getElementById('tabCassette');
 const tabVinyl          = document.getElementById('tabVinyl');
 const vinylDisc         = document.getElementById('vinylDisc');
 const tonearmEl         = document.getElementById('tonearmEl');
+const tonearmStylus     = document.querySelector('.tonearm-stylus');
 const vinylArtImg       = document.getElementById('vinylArtImg');
 const vinylLabelDefault = document.getElementById('vinylLabelDefault');
 const orb1El          = document.getElementById('orb1');
@@ -72,6 +77,11 @@ function switchView(view) {
     viewVinyl.hidden    = (view !== 'vinyl');
     tabCassette.classList.toggle('active', view === 'cassette');
     tabVinyl.classList.toggle('active',    view === 'vinyl');
+    // Recompute allowed tonearm sweep when showing vinyl
+    if (view === 'vinyl') {
+        // allow layout to settle then compute
+        requestAnimationFrame(() => setTimeout(computeAllowedTonearmAngles, 50));
+    }
 }
 
 tabCassette.addEventListener('click', () => switchView('cassette'));
@@ -80,12 +90,67 @@ tabVinyl.addEventListener('click',    () => switchView('vinyl'));
 // Restore last view on load (runs after DOM refs are set)
 switchView(currentView);
 
+// Recompute angles on resize to keep stylus confined when layout changes
+window.addEventListener('resize', () => {
+    computeAllowedTonearmAngles();
+});
+
 // ── Tonearm tracking ────────────────────────────────────────────────────────
+// Allowed angle range (computed to keep stylus over the vinyl)
+let allowedMinAngle = -45, allowedMaxAngle = 20;
+
+function computeAllowedTonearmAngles() {
+    if (!tonearmEl || !tonearmStylus || !vinylDisc) return;
+    // sample angles and find those where the stylus point lies within the vinyl circle
+    const rectVinyl = vinylDisc.getBoundingClientRect();
+    const cx = rectVinyl.left + rectVinyl.width / 2;
+    const cy = rectVinyl.top + rectVinyl.height / 2;
+    const radius = Math.min(rectVinyl.width, rectVinyl.height) / 2 - 6; // small margin
+
+    const origTransform = tonearmEl.style.transform;
+    const origTransition = tonearmEl.style.transition;
+    tonearmEl.style.transition = 'none';
+
+    const insideAngles = [];
+    for (let a = -90; a <= 90; a += 1) {
+        tonearmEl.style.transform = `rotate(${a}deg)`;
+        const sRect = tonearmStylus.getBoundingClientRect();
+        const sx = sRect.left + sRect.width / 2;
+        const sy = sRect.top + sRect.height / 2;
+        const d = Math.hypot(sx - cx, sy - cy);
+        if (d <= radius) insideAngles.push(a);
+    }
+
+    // restore
+    tonearmEl.style.transform = origTransform;
+    tonearmEl.style.transition = origTransition;
+
+    if (insideAngles.length) {
+        allowedMinAngle = Math.min(...insideAngles);
+        allowedMaxAngle = Math.max(...insideAngles);
+        // clamp to sensible defaults
+        allowedMinAngle = Math.max(allowedMinAngle, -80);
+        allowedMaxAngle = Math.min(allowedMaxAngle, 80);
+    } else {
+        // fallback
+        allowedMinAngle = -45;
+        allowedMaxAngle = 20;
+    }
+}
+
+function clampAngle(a) {
+    return Math.max(allowedMinAngle, Math.min(allowedMaxAngle, a));
+}
+
 function updateTonearm(fraction) {
+    // Sweep mapping: fraction 0 -> left (START_ANG), 1 -> right (END_ANG)
+    const PARKED    = 10;
+    const START_ANG = -45;
+    const END_ANG   = 20;
     const angle = (fraction < 0 || isNaN(fraction))
-        ? 22                  // parked (off record)
-        : 32 + fraction * 30; // 32° (track start) → 62° (track end)
-    tonearmEl.style.transform = `rotate(${angle}deg)`;
+        ? PARKED
+        : START_ANG + fraction * (END_ANG - START_ANG);
+    tonearmEl.style.transform = `rotate(${clampAngle(angle)}deg)`;
 }
 
 // ── State ──────────────────────────────────────────────────────────────────
@@ -156,6 +221,11 @@ async function loadTrack(index) {
     audio.src = URL.createObjectURL(file);
     audio.load();
 
+    // try to start playback immediately while metadata work continues
+    if (!pendingPlay) {
+        audio.play().catch(() => {});
+    }
+
     // Now-playing display
     const { title, artist } = parseFilename(file.name);
     applyMarquee(trackNameEl, title);
@@ -185,7 +255,7 @@ async function loadTrack(index) {
     vinylArtImg.style.display              = 'none';
     vinylLabelDefault.style.display        = 'flex';
     tonearmEl.style.transition             = 'none';   // snap to start instantly
-    tonearmEl.style.transform              = 'rotate(32deg)';
+    tonearmEl.style.transform              = 'rotate(-45deg)';
     // re-enable transition after frame
     requestAnimationFrame(() => { tonearmEl.style.transition = ''; });
 
@@ -230,8 +300,6 @@ async function loadTrack(index) {
     } catch (err) {
         console.warn('Audio metadata error:', err);
     }
-
-    if (!pendingPlay) audio.play();
 }
 
 // ── WAV bit-depth parser ───────────────────────────────────────────────────
@@ -567,10 +635,12 @@ audio.addEventListener('play', () => {
     reelRight.classList.add('spin');
     tapeStrand.classList.add('rolling');
     vinylDisc.classList.add('spinning');
+    if (vpSpinner) vpSpinner.classList.add('spin');
     playPauseBtn.innerHTML = '&#9646;&#9646;';
     wbLed.classList.add('active');
     ensureAnalyser();
     startViz();
+    startWave();
 });
 
 audio.addEventListener('pause', () => {
@@ -578,6 +648,18 @@ audio.addEventListener('pause', () => {
     playPauseBtn.innerHTML = '&#9654;';
     wbLed.classList.remove('active');
     stopViz();
+    stopWave();
+});
+
+audio.addEventListener('ended', () => {
+    if (currentIdx < playlist.length - 1) {
+        changeTrack(currentIdx + 1);
+    } else {
+        stopReels();
+        stopViz();
+        playPauseBtn.innerHTML = '&#9654;';
+    }
+    stopWave();
 });
 
 audio.addEventListener('timeupdate', () => {
@@ -606,6 +688,9 @@ function stopReels() {
     reelRight.classList.remove('spin');
     tapeStrand.classList.remove('rolling');
     vinylDisc.classList.remove('spinning');
+    if (vpSpinner) vpSpinner.classList.remove('spin');
+    // park the tonearm when everything stops
+    updateTonearm(-1);
 }
 
 // ── Drag-and-drop ──────────────────────────────────────────────────────────
@@ -888,7 +973,7 @@ async function loadYouTube(videoId) {
     vinylArtImg.style.display    = 'block';
     vinylLabelDefault.style.display = 'none';
     tonearmEl.style.transition   = 'none';
-    tonearmEl.style.transform    = 'rotate(32deg)';
+    tonearmEl.style.transform    = 'rotate(-45deg)';
     requestAnimationFrame(() => { tonearmEl.style.transition = ''; });
 
     // Placeholder while we fetch metadata
@@ -944,10 +1029,12 @@ function onYTStateChange(state) {
     if (!ytMode) return;
     // 1 = playing, 2 = paused, 0 = ended, 3 = buffering
     if (state === 1) {
+        stopWave(); // analyzer not used in YT mode
         reelLeft.classList.add('spin');
         reelRight.classList.add('spin');
         tapeStrand.classList.add('rolling');
         vinylDisc.classList.add('spinning');
+        if (vpSpinner) vpSpinner.classList.add('spin');
         playPauseBtn.innerHTML = '&#9646;&#9646;';
         wbLed.classList.add('active');
         startYTSeekUpdate();
@@ -995,6 +1082,8 @@ function startYTSeekUpdate() {
             updateSeekBarFill(pct);
             reelLeftTape.style.borderWidth  = Math.max(2,  22 - 20 * fraction) + 'px';
             reelRightTape.style.borderWidth = Math.min(22,  2 + 20 * fraction) + 'px';
+            // keep the tonearm moving in YouTube mode as well
+            updateTonearm(fraction);
         }
     }, 250);
 }
@@ -1012,6 +1101,9 @@ function exitYTMode() {
         try { ytPlayer.stopVideo(); } catch (_) {}
     }
     stopReels();
+    // clear wave bars
+    stopWave();
+    document.querySelectorAll('.sound-wave-bar').forEach(b => b.style.height = '10%');
     seekBar.value               = 0;
     updateSeekBarFill(0);
     currentTimeSpan.textContent = '00:00';
@@ -1039,4 +1131,59 @@ ytLoadBtn.addEventListener('click', () => {
 ytUrlInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') ytLoadBtn.click();
 });
+
+// Sound wave variables
+let waveRaf = null;
+let waveFreqData = null;
+
+// Create sound wave bars dynamically
+function createSoundWaveBars() {
+    const container = document.getElementById('soundWaveContainer');
+    if (!container) return;
+
+    container.innerHTML = '';
+    for (let i = 0; i < 20; i++) {
+        const bar = document.createElement('div');
+        bar.className = 'sound-wave-bar';
+        container.appendChild(bar);
+    }
+}
+
+// Update sound wave bars based on audio frequency data
+function updateSoundWave(frequencyData) {
+    const bars = document.querySelectorAll('.sound-wave-bar');
+    if (!bars.length || !frequencyData || frequencyData.length === 0) return;
+
+    const step = Math.floor(frequencyData.length / bars.length);
+    bars.forEach((bar, index) => {
+        const idx = index * step;
+        const value = frequencyData[idx] || 0;
+        bar.style.height = `${Math.max(10, value / 2)}%`;
+    });
+}
+
+function startWave() {
+    const container = document.getElementById('soundWaveContainer');
+    if (ytMode) return; // disable in YouTube mode (no analyzer)
+    if (!analyserNode) ensureAnalyser();
+    if (!waveFreqData) waveFreqData = new Uint8Array(analyserNode.frequencyBinCount);
+    if (waveRaf) return;
+    if (container) container.style.opacity = '1';
+
+    function step() {
+        analyserNode.getByteFrequencyData(waveFreqData);
+        updateSoundWave(waveFreqData);
+        waveRaf = requestAnimationFrame(step);
+    }
+    step();
+}
+
+function stopWave() {
+    if (waveRaf) { cancelAnimationFrame(waveRaf); waveRaf = null; }
+    const container = document.getElementById('soundWaveContainer');
+    if (container) container.style.opacity = '0';
+}
+
+// Initialize bars once
+createSoundWaveBars();
 
