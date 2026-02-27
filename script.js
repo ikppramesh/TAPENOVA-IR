@@ -63,6 +63,8 @@ themeToggle.addEventListener('click', () => {
 });
 
 // ── View switcher ───────────────────────────────────────────────────────────
+let currentView = localStorage.getItem('view') || 'cassette'; // 'cassette' | 'vinyl'
+
 function switchView(view) {
     currentView = view;
     localStorage.setItem('view', view);
@@ -94,7 +96,6 @@ let isSeeking     = false;
 let currentArtUrl = null;   // blob URL for current album art (revoke on track change)
 let cassetteAnimating = false; // true while eject/flip/insert animation is running
 let pendingPlay       = false; // suppresses audio.play() inside loadTrack during animation
-let currentView       = localStorage.getItem('view') || 'cassette'; // 'cassette' | 'vinyl'
 
 // ── Visualiser state ────────────────────────────────────────────────────────
 let analyserNode  = null;
