@@ -1187,3 +1187,37 @@ function stopWave() {
 // Initialize bars once
 createSoundWaveBars();
 
+// ── Contextual help icons & tooltips ──────────────────────────────────────
+(function initTooltips() {
+    const icons = document.querySelectorAll('.help-icon');
+
+    function closeAll() {
+        document.querySelectorAll('.tooltip--visible')
+            .forEach(t => t.classList.remove('tooltip--visible'));
+    }
+
+    icons.forEach(icon => {
+        const tip = icon.nextElementSibling;
+        if (!tip || tip.getAttribute('role') !== 'tooltip') return;
+
+        icon.addEventListener('click', e => {
+            e.stopPropagation();
+            const isOpen = tip.classList.contains('tooltip--visible');
+            closeAll();
+            if (!isOpen) tip.classList.add('tooltip--visible');
+        });
+
+        icon.addEventListener('keydown', e => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                icon.click();
+            }
+            if (e.key === 'Escape') closeAll();
+        });
+    });
+
+    document.addEventListener('click', e => {
+        if (!e.target.closest('.help-wrap')) closeAll();
+    });
+})();
+

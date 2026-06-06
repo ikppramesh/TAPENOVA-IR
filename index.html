@@ -21,10 +21,22 @@
         <!-- Player top bar: view tabs + theme toggle -->
         <div class="player-topbar">
             <div class="view-tabs">
-                <button class="view-tab active" id="tabCassette" title="Cassette view">📼</button>
-                <button class="view-tab"        id="tabVinyl"    title="Vinyl view">💿</button>
+                <span class="help-wrap">
+                    <button class="view-tab active" id="tabCassette">📼</button>
+                    <button class="help-icon" aria-label="Help">ⓘ</button>
+                    <span role="tooltip" class="tooltip" id="tip-cassette">Switch to Walkman cassette view — watch the reels spin as your music plays</span>
+                </span>
+                <span class="help-wrap">
+                    <button class="view-tab" id="tabVinyl">💿</button>
+                    <button class="help-icon" aria-label="Help">ⓘ</button>
+                    <span role="tooltip" class="tooltip" id="tip-vinyl">Switch to vinyl record view — tonearm tracks across the spinning disc</span>
+                </span>
             </div>
-            <button id="themeToggle" class="theme-toggle" title="Toggle light / dark mode">☀</button>
+            <span class="help-wrap">
+                <button id="themeToggle" class="theme-toggle">☀</button>
+                <button class="help-icon" aria-label="Help">ⓘ</button>
+                <span role="tooltip" class="tooltip" id="tip-theme">Toggle between dark and light mode — preference is saved for next visit</span>
+            </span>
         </div>
 
         <!-- ═══ VIEW A: WALKMAN (cassette) ════════════════════════════════════ -->
@@ -135,11 +147,31 @@
         <!-- Transport controls -->
         <div class="walkman-transport">
             <input type="file" id="fileInput" accept="audio/*" multiple class="file-input" />
-            <label for="fileInput" class="transport-btn tb-load">&#9167;</label>
-            <button id="prev"      class="transport-btn" disabled>&#9198;</button>
-            <button id="stop"      class="transport-btn" disabled>&#9632;</button>
-            <button id="playPause" class="transport-btn play-btn" disabled>&#9654;</button>
-            <button id="next"      class="transport-btn" disabled>&#9197;</button>
+            <span class="help-wrap">
+                <label for="fileInput" class="transport-btn tb-load">&#9167;</label>
+                <button class="help-icon" aria-label="Help">ⓘ</button>
+                <span role="tooltip" class="tooltip" id="tip-file">Load MP3, FLAC, WAV or OGG files from your device. Try a free sample: <a href="https://freemusicarchive.org" target="_blank" rel="noopener noreferrer">freemusicarchive.org</a></span>
+            </span>
+            <span class="help-wrap">
+                <button id="prev" class="transport-btn" disabled>&#9198;</button>
+                <button class="help-icon" aria-label="Help">ⓘ</button>
+                <span role="tooltip" class="tooltip" id="tip-prev">Skip to the previous track in your queue</span>
+            </span>
+            <span class="help-wrap">
+                <button id="stop" class="transport-btn" disabled>&#9632;</button>
+                <button class="help-icon" aria-label="Help">ⓘ</button>
+                <span role="tooltip" class="tooltip" id="tip-stop">Stop playback and return to the beginning of the track</span>
+            </span>
+            <span class="help-wrap">
+                <button id="playPause" class="transport-btn play-btn" disabled>&#9654;</button>
+                <button class="help-icon" aria-label="Help">ⓘ</button>
+                <span role="tooltip" class="tooltip" id="tip-play">Play or pause the current track</span>
+            </span>
+            <span class="help-wrap">
+                <button id="next" class="transport-btn" disabled>&#9197;</button>
+                <button class="help-icon" aria-label="Help">ⓘ</button>
+                <span role="tooltip" class="tooltip" id="tip-next">Skip to the next track in your queue</span>
+            </span>
         </div>
 
         <!-- Seek bar -->
@@ -148,6 +180,10 @@
             <div class="time-display">
                 <span id="currentTime">00:00</span>
                 <span id="duration">00:00</span>
+                <span class="help-wrap">
+                    <button class="help-icon" aria-label="Help">ⓘ</button>
+                    <span role="tooltip" class="tooltip" id="tip-seek">Drag to jump to any position in the track</span>
+                </span>
             </div>
         </div>
 
@@ -156,7 +192,15 @@
             <span class="yt-badge">YT</span>
             <input type="text" id="ytUrlInput" class="yt-url-input"
                    placeholder="Paste a YouTube URL…" autocomplete="off" spellcheck="false" />
-            <button id="ytLoadBtn" class="yt-load-btn">Play</button>
+            <span class="help-wrap">
+                <button class="help-icon" aria-label="Help">ⓘ</button>
+                <span role="tooltip" class="tooltip" id="tip-yt-url">Paste a YouTube URL to stream audio directly in the player</span>
+            </span>
+            <span class="help-wrap">
+                <button id="ytLoadBtn" class="yt-load-btn">Play</button>
+                <button class="help-icon" aria-label="Help">ⓘ</button>
+                <span role="tooltip" class="tooltip" id="tip-yt-load">Load and play the YouTube URL entered above</span>
+            </span>
         </div>
 
         <!-- Audio info -->
@@ -173,11 +217,26 @@
                 <span class="info-label">Bitrate</span>
                 <span class="info-value"><span id="bitrate">-</span> kbps</span>
             </div>
+            <span class="help-wrap">
+                <button class="help-icon" aria-label="Help">ⓘ</button>
+                <span role="tooltip" class="tooltip" id="tip-specs">Audio format details: sample rate (Hz), bit depth, and bitrate of the loaded file</span>
+            </span>
         </div>
 
         <!-- Playlist -->
         <div class="playlist-section">
-            <div class="playlist-header">Queue <span id="queueCount">(0)</span></div>
+            <div class="playlist-header">
+                Queue
+                <span class="help-wrap">
+                    <span id="queueCount">(0)</span>
+                    <button class="help-icon" aria-label="Help">ⓘ</button>
+                    <span role="tooltip" class="tooltip" id="tip-queue">Number of tracks loaded in your current session queue</span>
+                </span>
+                <span class="help-wrap">
+                    <button class="help-icon" aria-label="Help for playlist">ⓘ</button>
+                    <span role="tooltip" class="tooltip" id="tip-playlist">Your loaded tracks — click any title to jump to it</span>
+                </span>
+            </div>
             <ul id="playlist" class="playlist"></ul>
         </div>
 
