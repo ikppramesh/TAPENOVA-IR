@@ -821,6 +821,22 @@ body {
     0 4px 22px rgba(0, 0, 0, 0.65);
 }
 
+/* Strobe-dot calibration ring on the platter rim — purely decorative,
+   evokes the speed-strobe markings on a real turntable mat */
+.platter::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: repeating-conic-gradient(
+    rgba(255, 255, 255, 0.09) 0deg 1.6deg,
+    transparent 1.6deg 9deg
+  );
+  -webkit-mask: radial-gradient(circle at center, transparent 0, transparent 100px, #000 101px, #000 106px, transparent 107px);
+          mask: radial-gradient(circle at center, transparent 0, transparent 100px, #000 101px, #000 106px, transparent 107px);
+  pointer-events: none;
+}
+
 /* ── Vinyl record (rotates during playback) ────────────── */
 .vinyl {
   width: 196px;
@@ -842,17 +858,14 @@ body {
     #090909;
   will-change: transform;
   transform-origin: center center;
-  /* spin counter‑clockwise to match real turntable direction */
-  animation: vinyl-spin 1.8s linear infinite reverse;
-  animation-play-state: paused;
+  /* Rotation itself is driven frame-by-frame in JS (see setVinylMotor /
+     vinylMotorTick) so the platter can spin up and coast down with real
+     motor inertia instead of snapping instantly to speed. */
   box-shadow: 0 0 0 1px #000;
+  transition: box-shadow 0.4s;
 }
 .vinyl.spinning {
-  animation-play-state: running;
-}
-@keyframes vinyl-spin {
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(360deg); }
+  box-shadow: 0 0 0 1px #000, 0 0 22px rgba(243, 160, 36, 0.10);
 }
 
 /* ── Vinyl centre label (rotates with the record) ─────── */
@@ -958,6 +971,39 @@ body {
   z-index: 2;
 }
 
+/* Cue lever — clicking it lifts/drops the stylus, same as the Play/Pause
+   transport button, but styled as the small mechanical lever real
+   turntables use to cue a track. */
+.cue-lever-mount {
+  position: absolute;
+  bottom: 6px;
+  right: 4px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 36% 28%, #7a7a7a 0%, #444 55%, #222 100%);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+  z-index: 3;
+  cursor: pointer;
+}
+.cue-lever {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 3px;
+  height: 16px;
+  margin: -1px 0 0 -1.5px;
+  border-radius: 2px;
+  background: linear-gradient(180deg, #d8b46a 0%, #9c7a34 100%);
+  transform-origin: 50% 10%;
+  transform: rotate(20deg);
+  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  pointer-events: none;
+}
+.cue-lever-mount.raised .cue-lever {
+  transform: rotate(-18deg);
+}
+
 /* Rotating arm assembly — pivot point is at (0, 0) i.e. top-left of this div */
 .tonearm-wrapper {
   position: absolute;
@@ -968,6 +1014,34 @@ body {
   transform: rotate(-45deg);   /* start (leftmost) position */
   transition: transform 0.65s cubic-bezier(0.4, 0, 0.2, 1);
   z-index: 5; /* highest stacking so arm sits over vinyl */
+}
+
+/* Counterweight — small drum behind the pivot, rotates rigidly with the arm */
+.tonearm-counterweight {
+  position: absolute;
+  top: -13px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 9px;
+  height: 13px;
+  border-radius: 2px;
+  background: linear-gradient(180deg, #6a6a6a 0%, #333 55%, #1c1c1c 100%);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+  z-index: 1;
+}
+
+/* Lift group — everything below the pivot that rises off the record when
+   cueing. translateY + a growing drop-shadow together sell "elevation" in
+   a flat 2-D scene. */
+.tonearm-lift-group {
+  transform: translateY(0);
+  filter: drop-shadow(0 3px 3px rgba(0, 0, 0, 0.45));
+  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+              filter 0.4s ease;
+}
+.tonearm-lift-group.lifted {
+  transform: translateY(-9px);
+  filter: drop-shadow(0 15px 10px rgba(0, 0, 0, 0.55));
 }
 
 /* The arm shaft — tapered from base to headshell */
@@ -1001,6 +1075,74 @@ body {
   border-radius: 0 0 1px 1px;
   position: absolute;
   bottom: -10px;
+}
+
+/* ── Deck control strip: motor LED + 33⅓ / 45 speed selector ──── */
+.deck-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 2px 16px 14px;
+}
+
+.motor-led {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #3a2410;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.6);
+  transition: background 0.4s, box-shadow 0.4s;
+  flex: 0 0 auto;
+}
+.motor-led.on {
+  background: var(--accent);
+  box-shadow: 0 0 6px 1px rgba(243, 160, 36, 0.75);
+}
+
+.deck-controls-label {
+  font-size: 0.62rem;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.30);
+}
+body.light .deck-controls-label { color: rgba(0, 0, 0, 0.34); }
+
+.speed-selector {
+  display: flex;
+  gap: 4px;
+  background: rgba(0, 0, 0, 0.35);
+  border-radius: 20px;
+  padding: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+body.light .speed-selector {
+  background: rgba(0, 0, 0, 0.06);
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+.speed-btn {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  padding: 4px 10px;
+  border-radius: 16px;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+}
+body.light .speed-btn { color: rgba(0, 0, 0, 0.55); }
+
+.speed-btn:hover { color: #fff; }
+body.light .speed-btn:hover { color: #000; }
+
+.speed-btn.active {
+  background: var(--accent);
+  color: #1a1200;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
 }
 
 /* ── Vinyl view — light theme ──────────────────────────── */

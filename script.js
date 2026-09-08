@@ -41,6 +41,12 @@ const tabVinyl          = document.getElementById('tabVinyl');
 const vinylDisc         = document.getElementById('vinylDisc');
 const tonearmEl         = document.getElementById('tonearmEl');
 const tonearmStylus     = document.querySelector('.tonearm-stylus');
+const tonearmLiftGroup  = document.getElementById('tonearmLiftGroup');
+const tonearmBaseEl     = document.querySelector('.tonearm-base');
+const cueLeverMount     = document.querySelector('.cue-lever-mount');
+const vinylMotorLed     = document.getElementById('vinylMotorLed');
+const speed33Btn        = document.getElementById('speed33');
+const speed45Btn        = document.getElementById('speed45');
 const vinylArtImg       = document.getElementById('vinylArtImg');
 const vinylLabelDefault = document.getElementById('vinylLabelDefault');
 const orb1El          = document.getElementById('orb1');
@@ -142,16 +148,164 @@ function clampAngle(a) {
     return Math.max(allowedMinAngle, Math.min(allowedMaxAngle, a));
 }
 
+// Sweep mapping: fraction 0 -> left (TONEARM_START_ANG), 1 -> right (TONEARM_END_ANG)
+const TONEARM_PARKED    = 10;
+const TONEARM_START_ANG = -45;
+const TONEARM_END_ANG   = 20;
+
 function updateTonearm(fraction) {
-    // Sweep mapping: fraction 0 -> left (START_ANG), 1 -> right (END_ANG)
-    const PARKED    = 10;
-    const START_ANG = -45;
-    const END_ANG   = 20;
     const angle = (fraction < 0 || isNaN(fraction))
-        ? PARKED
-        : START_ANG + fraction * (END_ANG - START_ANG);
+        ? TONEARM_PARKED
+        : TONEARM_START_ANG + fraction * (TONEARM_END_ANG - TONEARM_START_ANG);
     tonearmEl.style.transform = `rotate(${clampAngle(angle)}deg)`;
 }
+
+// ── Tonearm cueing (lift → swing → drop) ────────────────────────────────────
+// While `tonearmCueing` is true, continuous playback-progress updates
+// (audio 'timeupdate' / the YouTube poll) skip re-writing the arm's angle so
+// they don't fight the lift/drop sequence.
+let tonearmCueing = false;
+let cueTimer1 = null, cueTimer2 = null;
+
+function cueTonearm(fraction) {
+    if (!tonearmLiftGroup) { updateTonearm(fraction); return; }
+    clearTimeout(cueTimer1);
+    clearTimeout(cueTimer2);
+    tonearmCueing = true;
+    tonearmLiftGroup.classList.add('lifted');
+    if (cueLeverMount) cueLeverMount.classList.add('raised');
+    cueTimer1 = setTimeout(() => {
+        updateTonearm(fraction);
+        cueTimer2 = setTimeout(() => {
+            tonearmLiftGroup.classList.remove('lifted');
+            if (cueLeverMount) cueLeverMount.classList.remove('raised');
+            tonearmCueing = false;
+        }, 650); // matches .tonearm-wrapper's transform transition duration
+    }, 220); // let the arm rise before it swings
+}
+
+// Cue lever click — same effect as the transport Play/Pause button, just
+// approached the way a real turntable operator would: lift the needle.
+if (cueLeverMount) {
+    cueLeverMount.addEventListener('click', () => playPauseBtn.click());
+}
+
+// ── Vinyl motor — spin-up / coast-down inertia ──────────────────────────────
+// Rotation is driven every frame instead of via a fixed-duration CSS
+// keyframe animation so the platter accelerates and decelerates like a real
+// motor + platter mass, rather than snapping instantly to speed.
+const VINYL_BASE_DEG_PER_MS = 360 / 1800; // matches the previous 1.8s/rev at 33⅓
+let vinylAngle          = 0;
+let vinylAngularSpeed   = 0;     // current deg/ms (always >= 0)
+let vinylTargetSpeed    = 0;     // deg/ms the motor is driving toward
+let vinylMotorOn        = false;
+let vinylRafId          = null;
+let vinylLastTs         = null;
+let vinylSpeedMultiplier = 1;    // 1 = 33⅓, 1.364 = 45 rpm
+
+function vinylMotorTick(ts) {
+    if (vinylLastTs == null) vinylLastTs = ts;
+    const dt = Math.min(ts - vinylLastTs, 64); // clamp to avoid huge jumps after a tab freeze
+    vinylLastTs = ts;
+
+    // Exponential approach toward target speed: fast spin-up, slower coast-down
+    // (a real platter's felt-mat friction lets it drift for longer than the
+    // motor takes to bring it up to speed).
+    const approachRate = vinylMotorOn ? 0.0032 : 0.0011;
+    vinylAngularSpeed += (vinylTargetSpeed - vinylAngularSpeed) * Math.min(1, dt * approachRate);
+    if (!vinylMotorOn && vinylAngularSpeed < 0.00002) vinylAngularSpeed = 0;
+
+    vinylAngle = (vinylAngle - vinylAngularSpeed * dt) % 360;
+    vinylDisc.style.transform = `rotate(${vinylAngle}deg)`;
+
+    if (vinylMotorOn || vinylAngularSpeed > 0) {
+        vinylRafId = requestAnimationFrame(vinylMotorTick);
+    } else {
+        vinylRafId = null;
+        vinylLastTs = null;
+    }
+}
+
+function setVinylMotor(on) {
+    vinylMotorOn     = on;
+    vinylTargetSpeed = on ? VINYL_BASE_DEG_PER_MS * vinylSpeedMultiplier : 0;
+    vinylDisc.classList.toggle('spinning', on);
+    if (vinylMotorLed) vinylMotorLed.classList.toggle('on', on);
+    if (!vinylRafId) {
+        vinylLastTs = null;
+        vinylRafId = requestAnimationFrame(vinylMotorTick);
+    }
+}
+
+function setVinylSpeed(multiplier, rateBtn) {
+    vinylSpeedMultiplier = multiplier;
+    if (vinylMotorOn) vinylTargetSpeed = VINYL_BASE_DEG_PER_MS * multiplier;
+    if (!ytMode) audio.playbackRate = multiplier;
+    [speed33Btn, speed45Btn].forEach(b => b && b.classList.toggle('active', b === rateBtn));
+}
+
+if (speed33Btn) speed33Btn.addEventListener('click', () => setVinylSpeed(1, speed33Btn));
+if (speed45Btn) speed45Btn.addEventListener('click', () => setVinylSpeed(1.364, speed45Btn));
+
+// ── Drag the tonearm to needle-drop anywhere in the track ──────────────────
+let isDraggingTonearm = false;
+let wasPlayingBeforeDrag = false;
+
+function angleFromPointer(clientX, clientY) {
+    const pivotRect = tonearmBaseEl.getBoundingClientRect();
+    const px = pivotRect.left + pivotRect.width  / 2;
+    const py = pivotRect.top  + pivotRect.height / 2;
+    const rawDeg = Math.atan2(clientY - py, clientX - px) * 180 / Math.PI;
+    return clampAngle(rawDeg - 90); // rotate(0) == arm pointing straight down
+}
+
+function beginTonearmDrag(e) {
+    const hasTrack = ytMode ? !!ytPlayer : (audio.duration > 0);
+    if (!hasTrack) return;
+    isDraggingTonearm = true;
+    wasPlayingBeforeDrag = ytMode
+        ? (ytPlayer && ytPlayer.getPlayerState && ytPlayer.getPlayerState() === 1)
+        : !audio.paused;
+    tonearmCueing = true; // suppress timeupdate/poll updates while dragging
+    tonearmEl.style.transition = 'none';
+    if (tonearmLiftGroup) tonearmLiftGroup.classList.add('lifted');
+    if (cueLeverMount) cueLeverMount.classList.add('raised');
+    e.preventDefault();
+    window.addEventListener('pointermove', onTonearmDrag);
+    window.addEventListener('pointerup', endTonearmDrag, { once: true });
+}
+
+function onTonearmDrag(e) {
+    if (!isDraggingTonearm) return;
+    const angle = angleFromPointer(e.clientX, e.clientY);
+    tonearmEl.style.transform = `rotate(${angle}deg)`;
+}
+
+function endTonearmDrag(e) {
+    if (!isDraggingTonearm) return;
+    isDraggingTonearm = false;
+    window.removeEventListener('pointermove', onTonearmDrag);
+
+    const angle    = angleFromPointer(e.clientX, e.clientY);
+    const fraction = Math.max(0, Math.min(1, (angle - TONEARM_START_ANG) / (TONEARM_END_ANG - TONEARM_START_ANG)));
+
+    if (ytMode) {
+        if (ytPlayer && ytPlayer.getDuration) {
+            ytPlayer.seekTo(fraction * ytPlayer.getDuration(), true);
+            if (wasPlayingBeforeDrag) ytPlayer.playVideo();
+        }
+    } else if (audio.duration) {
+        audio.currentTime = fraction * audio.duration;
+        if (wasPlayingBeforeDrag) audio.play();
+    }
+
+    tonearmEl.style.transition = '';
+    if (tonearmLiftGroup) tonearmLiftGroup.classList.remove('lifted');
+    if (cueLeverMount) cueLeverMount.classList.remove('raised');
+    tonearmCueing = false;
+}
+
+tonearmEl.addEventListener('pointerdown', beginTonearmDrag);
 
 // ── State ──────────────────────────────────────────────────────────────────
 let audioContext;
@@ -254,6 +408,11 @@ async function loadTrack(index) {
     // Reset vinyl label and tonearm for new track
     vinylArtImg.style.display              = 'none';
     vinylLabelDefault.style.display        = 'flex';
+    clearTimeout(cueTimer1);
+    clearTimeout(cueTimer2);
+    tonearmCueing                          = false;
+    if (tonearmLiftGroup) tonearmLiftGroup.classList.remove('lifted');
+    if (cueLeverMount) cueLeverMount.classList.remove('raised');
     tonearmEl.style.transition             = 'none';   // snap to start instantly
     tonearmEl.style.transform              = 'rotate(-45deg)';
     // re-enable transition after frame
@@ -634,7 +793,9 @@ audio.addEventListener('play', () => {
     reelLeft.classList.add('spin');
     reelRight.classList.add('spin');
     tapeStrand.classList.add('rolling');
-    vinylDisc.classList.add('spinning');
+    setVinylMotor(true);
+    const duration = audio.duration || 0;
+    cueTonearm(duration > 0 ? audio.currentTime / duration : 0);
     if (vpSpinner) vpSpinner.classList.add('spin');
     playPauseBtn.innerHTML = '&#9646;&#9646;';
     wbLed.classList.add('active');
@@ -679,18 +840,19 @@ audio.addEventListener('timeupdate', () => {
     reelLeftTape.style.borderWidth  = Math.max(2,  22 - 20 * fraction) + 'px';
     reelRightTape.style.borderWidth = Math.min(22,  2 + 20 * fraction) + 'px';
 
-    // Tonearm sweeps from 32° (start) to 62° (end) as track progresses
-    updateTonearm(fraction);
+    // Tonearm sweeps across the record as the track progresses (skipped while
+    // a lift/drop cue or a manual drag is already animating the arm)
+    if (!tonearmCueing) updateTonearm(fraction);
 });
 
 function stopReels() {
     reelLeft.classList.remove('spin');
     reelRight.classList.remove('spin');
     tapeStrand.classList.remove('rolling');
-    vinylDisc.classList.remove('spinning');
+    setVinylMotor(false);
     if (vpSpinner) vpSpinner.classList.remove('spin');
-    // park the tonearm when everything stops
-    updateTonearm(-1);
+    // lift the tonearm and swing it back to rest when everything stops
+    cueTonearm(-1);
 }
 
 // ── Drag-and-drop ──────────────────────────────────────────────────────────
@@ -972,6 +1134,11 @@ async function loadYouTube(videoId) {
     vinylArtImg.src              = ytThumb;
     vinylArtImg.style.display    = 'block';
     vinylLabelDefault.style.display = 'none';
+    clearTimeout(cueTimer1);
+    clearTimeout(cueTimer2);
+    tonearmCueing                = false;
+    if (tonearmLiftGroup) tonearmLiftGroup.classList.remove('lifted');
+    if (cueLeverMount) cueLeverMount.classList.remove('raised');
     tonearmEl.style.transition   = 'none';
     tonearmEl.style.transform    = 'rotate(-45deg)';
     requestAnimationFrame(() => { tonearmEl.style.transition = ''; });
@@ -1033,7 +1200,11 @@ function onYTStateChange(state) {
         reelLeft.classList.add('spin');
         reelRight.classList.add('spin');
         tapeStrand.classList.add('rolling');
-        vinylDisc.classList.add('spinning');
+        setVinylMotor(true);
+        if (ytPlayer && ytPlayer.getDuration) {
+            const dur = ytPlayer.getDuration() || 0;
+            cueTonearm(dur > 0 ? ytPlayer.getCurrentTime() / dur : 0);
+        }
         if (vpSpinner) vpSpinner.classList.add('spin');
         playPauseBtn.innerHTML = '&#9646;&#9646;';
         wbLed.classList.add('active');
@@ -1083,7 +1254,7 @@ function startYTSeekUpdate() {
             reelLeftTape.style.borderWidth  = Math.max(2,  22 - 20 * fraction) + 'px';
             reelRightTape.style.borderWidth = Math.min(22,  2 + 20 * fraction) + 'px';
             // keep the tonearm moving in YouTube mode as well
-            updateTonearm(fraction);
+            if (!tonearmCueing) updateTonearm(fraction);
         }
     }, 250);
 }

@@ -122,11 +122,17 @@
 
                 <!-- Right: tonearm assembly -->
                 <div class="tonearm-area">
+                    <div class="cue-lever-mount">
+                        <div class="cue-lever" id="cueLever" title="Cue lever — lift / drop the needle"></div>
+                    </div>
                     <div class="tonearm-base"></div>
                     <div class="tonearm-wrapper" id="tonearmEl">
-                        <div class="tonearm-arm"></div>
-                        <div class="tonearm-headshell">
-                            <div class="tonearm-stylus"></div>
+                        <div class="tonearm-counterweight"></div>
+                        <div class="tonearm-lift-group" id="tonearmLiftGroup">
+                            <div class="tonearm-arm"></div>
+                            <div class="tonearm-headshell">
+                                <div class="tonearm-stylus"></div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -134,6 +140,16 @@
                 <!-- Sound wave container -->
                 <div class="sound-wave-container" id="soundWaveContainer"></div>
 
+            </div>
+
+            <!-- Motor / speed control strip -->
+            <div class="deck-controls">
+                <span class="motor-led" id="vinylMotorLed"></span>
+                <span class="deck-controls-label">Speed</span>
+                <div class="speed-selector" id="speedSelector" role="group" aria-label="Turntable speed">
+                    <button type="button" class="speed-btn active" id="speed33" data-rate="1">33⅓</button>
+                    <button type="button" class="speed-btn" id="speed45" data-rate="1.364">45</button>
+                </div>
             </div>
         </div><!-- /.vinyl-body / #viewVinyl -->
 
