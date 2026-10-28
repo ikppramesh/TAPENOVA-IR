@@ -56,7 +56,7 @@
 ### 📂 File Management
 - **Drag-and-drop** or **file picker** (`audio/*` accept filter)
 - Supports **MP3, WAV, FLAC, AAC, OGG, M4A**
-- In-memory playlist queue with click-to-jump
+- Playlist queue with click-to-jump, **drag-to-reorder** (grab the ⠿ handle, or focus it and use ↑/↓), and per-track remove — the queue, its order and your last-played track are saved in **IndexedDB** and restored on reload
 - Blob URL lifecycle management (revoke on track change to prevent memory leaks)
 - Auto-advance to next track on `ended` event
 

@@ -709,6 +709,57 @@ body {
   transition: background 0.12s, color 0.12s;
 }
 
+.playlist li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pl-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pl-handle {
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  color: #555;
+  font-size: 1.1em;
+  line-height: 1;
+  padding: 2px 2px;
+  border-radius: 4px;
+}
+
+.pl-handle:hover,
+.pl-handle:focus-visible { color: var(--accent); outline: none; }
+
+.pl-remove {
+  background: none;
+  border: none;
+  color: #555;
+  font-size: 1.2em;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 4px;
+  opacity: 0;
+  transition: opacity 0.12s, color 0.12s;
+}
+
+.playlist li:hover .pl-remove,
+.pl-remove:focus-visible { opacity: 1; }
+.pl-remove:hover { color: #e55; }
+@media (hover: none) { .pl-remove { opacity: 1; } }
+
+.playlist.reordering { cursor: grabbing; user-select: none; }
+.playlist li.dragging {
+  background: rgba(243, 160, 36, 0.14);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+  color: var(--accent);
+}
+
 .playlist li:hover {
   background: rgba(255, 255, 255, 0.04);
   color: #aaa;

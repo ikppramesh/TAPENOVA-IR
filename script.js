@@ -310,6 +310,7 @@ tonearmEl.addEventListener('pointerdown', beginTonearmDrag);
 // ── State ──────────────────────────────────────────────────────────────────
 let audioContext;
 let playlist      = [];     // array of File objects
+let trackIds      = [];     // IndexedDB keys, parallel to `playlist` (null until saved)
 let currentIdx    = -1;
 let isSeeking     = false;
 let currentArtUrl = null;   // blob URL for current album art (revoke on track change)
@@ -352,7 +353,16 @@ function addFiles(files) {
 
     const startIdx = playlist.length;
     playlist.push(...audioFiles);
+    trackIds.push(...audioFiles.map(() => null));
     renderPlaylist();
+    store.addTracks(audioFiles).then((ids) => {
+        ids.forEach((id, k) => {
+            const at = playlist.indexOf(audioFiles[k]);
+            if (at >= 0) trackIds[at] = id;
+            else if (id !== null) store.removeTrack(id);   // removed before save finished
+        });
+        persistOrder();
+    });
 
     // Auto-load the first new track if nothing is playing
     if (currentIdx < 0) {
@@ -419,6 +429,7 @@ async function loadTrack(index) {
     requestAnimationFrame(() => { tonearmEl.style.transition = ''; });
 
     renderPlaylist();
+    persistOrder();   // remember last-played track
 
     // Read audio metadata via Web Audio API
     try {
@@ -575,19 +586,207 @@ function parseFilename(filename) {
     return { artist: '', title: base };
 }
 
+// ── Playlist persistence (IndexedDB) ───────────────────────────────────────
+// Files are stored as Blobs in `tracks`; queue order and last-played track live
+// in `meta`, so a reorder only rewrites a small array.
+const store = (() => {
+    let dbPromise = null;
+    function open() {
+        if (!dbPromise) {
+            dbPromise = new Promise((resolve, reject) => {
+                if (!window.indexedDB) return reject(new Error('IndexedDB unavailable'));
+                const req = indexedDB.open('tapenova-playlist', 1);
+                req.onupgradeneeded = () => {
+                    req.result.createObjectStore('tracks', { autoIncrement: true });
+                    req.result.createObjectStore('meta');
+                };
+                req.onsuccess = () => resolve(req.result);
+                req.onerror = () => reject(req.error);
+            });
+        }
+        return dbPromise;
+    }
+    // Runs fn inside a transaction; resolves true on commit, false on any failure.
+    async function run(stores, mode, fn) {
+        try {
+            const db = await open();
+            const tx = db.transaction(stores, mode);
+            fn(tx);
+            await new Promise((res, rej) => {
+                tx.oncomplete = res;
+                tx.onerror = tx.onabort = () => rej(tx.error);
+            });
+            return true;
+        } catch (err) {
+            console.warn('Playlist storage error:', err);
+            return false;
+        }
+    }
+    return {
+        async addTracks(files) {
+            const reqs = [];
+            const ok = await run(['tracks'], 'readwrite', (tx) => {
+                files.forEach((f) => reqs.push(tx.objectStore('tracks').add(f)));
+            });
+            return ok ? reqs.map((r) => r.result) : files.map(() => null);
+        },
+        removeTrack: (id) => run(['tracks'], 'readwrite', (tx) => tx.objectStore('tracks').delete(id)),
+        saveState: (order, current) => run(['meta'], 'readwrite', (tx) => {
+            tx.objectStore('meta').put(order, 'order');
+            tx.objectStore('meta').put(current, 'current');
+        }),
+        async load() {
+            const r = {};
+            const ok = await run(['tracks', 'meta'], 'readonly', (tx) => {
+                r.order   = tx.objectStore('meta').get('order');
+                r.current = tx.objectStore('meta').get('current');
+                r.keys    = tx.objectStore('tracks').getAllKeys();
+                r.vals    = tx.objectStore('tracks').getAll();
+            });
+            if (!ok) return null;
+            const byId = new Map(r.keys.result.map((k, i) => [k, r.vals.result[i]]));
+            const ids = (r.order.result || []).filter((id) => byId.has(id));
+            // Tracks missing from the saved order (e.g. interrupted save) go last
+            byId.forEach((_, id) => { if (!ids.includes(id)) ids.push(id); });
+            return { ids, files: ids.map((id) => byId.get(id)), current: r.current.result ?? null };
+        },
+    };
+})();
+
+function persistOrder() {
+    if (trackIds.some((id) => id === null)) return;   // writes still in flight
+    store.saveState(trackIds.slice(), trackIds[currentIdx] ?? null);
+}
+
+async function restorePlaylist() {
+    const saved = await store.load();
+    if (!saved || !saved.files.length || playlist.length) return;
+    playlist = saved.files;
+    trackIds = saved.ids;
+    renderPlaylist();
+    // Cue up the last-played track without starting playback
+    const idx = saved.ids.indexOf(saved.current);
+    pendingPlay = true;
+    loadTrack(idx >= 0 ? idx : 0);
+    pendingPlay = false;
+}
+
+function moveTrack(from, to) {
+    if (from === to || to < 0 || to >= playlist.length) return;
+    const playing = currentIdx >= 0 ? playlist[currentIdx] : null;
+    playlist.splice(to, 0, playlist.splice(from, 1)[0]);
+    trackIds.splice(to, 0, trackIds.splice(from, 1)[0]);
+    if (playing) currentIdx = playlist.indexOf(playing);
+    renderPlaylist();
+    persistOrder();
+}
+
+function removeTrack(i) {
+    const id = trackIds[i];
+    const wasCurrent = i === currentIdx;
+    playlist.splice(i, 1);
+    trackIds.splice(i, 1);
+    if (id !== null) store.removeTrack(id);
+    if (wasCurrent) {
+        currentIdx = -1;
+        if (playlist.length) {
+            changeTrack(Math.min(i, playlist.length - 1));
+        } else {
+            audio.pause();
+            trackNameEl.textContent = 'No track loaded';
+            trackMetaEl.textContent = '';
+        }
+    } else if (i < currentIdx) {
+        currentIdx--;
+    }
+    renderPlaylist();
+    persistOrder();
+}
+
 // ── Playlist render ────────────────────────────────────────────────────────
 function renderPlaylist() {
     playlistEl.innerHTML = '';
     queueCountEl.textContent = `(${playlist.length})`;
 
     playlist.forEach((file, i) => {
+        const title = parseFilename(file.name).title;
         const li = document.createElement('li');
-        li.textContent = `${i + 1}. ${parseFilename(file.name).title}`;
         if (i === currentIdx) li.classList.add('active');
+
+        const handle = document.createElement('span');
+        handle.className = 'pl-handle';
+        handle.textContent = '⠿';
+        handle.tabIndex = 0;
+        handle.setAttribute('role', 'button');
+        handle.setAttribute('aria-label', `Reorder ${title}. Drag, or use up and down arrow keys.`);
+        handle.addEventListener('pointerdown', (e) => beginPlaylistDrag(e, li, i));
+        handle.addEventListener('click', (e) => e.stopPropagation());
+        handle.addEventListener('keydown', (e) => {
+            if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+            e.preventDefault();
+            e.stopPropagation();
+            const to = Math.max(0, Math.min(playlist.length - 1, i + (e.key === 'ArrowUp' ? -1 : 1)));
+            moveTrack(i, to);
+            playlistEl.children[to].querySelector('.pl-handle').focus();
+        });
+
+        const label = document.createElement('span');
+        label.className = 'pl-title';
+        label.textContent = `${i + 1}. ${title}`;
+
+        const del = document.createElement('button');
+        del.className = 'pl-remove';
+        del.type = 'button';
+        del.textContent = '×';
+        del.setAttribute('aria-label', `Remove ${title} from queue`);
+        del.addEventListener('click', (e) => { e.stopPropagation(); removeTrack(i); });
+
+        li.append(handle, label, del);
         li.addEventListener('click', () => changeTrack(i));
         playlistEl.appendChild(li);
     });
 }
+
+// Pointer-based drag (mouse, touch, pen). The row is moved in the DOM while
+// dragging; the new order is committed once on release.
+function beginPlaylistDrag(e, li, from) {
+    if (e.button !== undefined && e.button !== 0) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const handle = e.currentTarget;
+    handle.setPointerCapture(e.pointerId);
+    li.classList.add('dragging');
+    playlistEl.classList.add('reordering');
+
+    const onMove = (ev) => {
+        const box = playlistEl.getBoundingClientRect();
+        if (ev.clientY < box.top + 20) playlistEl.scrollTop -= 8;
+        else if (ev.clientY > box.bottom - 20) playlistEl.scrollTop += 8;
+        for (const row of playlistEl.children) {
+            if (row === li) continue;
+            const r = row.getBoundingClientRect();
+            if (ev.clientY < r.top || ev.clientY > r.bottom) continue;
+            const ref = ev.clientY > r.top + r.height / 2 ? row.nextSibling : row;
+            if (ref !== li) playlistEl.insertBefore(li, ref);
+            break;
+        }
+    };
+    const finish = (commit) => {
+        handle.removeEventListener('pointermove', onMove);
+        handle.removeEventListener('pointerup', onUp);
+        handle.removeEventListener('pointercancel', onCancel);
+        const to = Array.from(playlistEl.children).indexOf(li);
+        if (commit && to !== from) moveTrack(from, to);
+        else renderPlaylist();
+    };
+    const onUp = () => finish(true);
+    const onCancel = () => finish(false);
+    handle.addEventListener('pointermove', onMove);
+    handle.addEventListener('pointerup', onUp);
+    handle.addEventListener('pointercancel', onCancel);
+}
+
+restorePlaylist();
 
 // ── Playback controls ──────────────────────────────────────────────────────
 playPauseBtn.addEventListener('click', () => {
