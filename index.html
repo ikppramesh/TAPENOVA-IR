@@ -261,10 +261,6 @@
     <!-- Hidden YouTube IFrame Player container -->
     <div id="ytPlayerEl" aria-hidden="true"></div>
     <script src="script.js"></script>
-    <script>
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/service-worker.js').catch(console.error);
-        }
-    </script>
+    <script src="sw-register.js"></script>
 </body>
 </html>

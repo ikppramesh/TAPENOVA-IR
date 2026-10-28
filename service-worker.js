@@ -1,10 +1,11 @@
 const CACHE_NAME = 'tapenova-cache-v1';
 const ASSETS = [
-  '/',
-  '/index.html',
-  '/style.css',
-  '/script.js',
-  '/tapenovair.png'
+  './',
+  'index.html',
+  'style.css',
+  'script.js',
+  'sw-register.js',
+  'tapenovair.png'
 ];
 
 self.addEventListener('install', (event) => {
